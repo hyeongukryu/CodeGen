@@ -7,4 +7,9 @@
         <OutputType>Library</OutputType>
     </PropertyGroup>
 
+    <ItemGroup>
+      <None Remove="Web\index.html" />
+      <EmbeddedResource Include="Web\index.html" />
+    </ItemGroup>
+
 </Project>

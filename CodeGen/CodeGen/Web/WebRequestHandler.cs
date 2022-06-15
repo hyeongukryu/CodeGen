@@ -2,12 +2,7 @@ namespace CodeGen.Web;
 
 public class WebRequestHandler
 {
-    public Task<string> HandleWebAppRequest()
-    {
-        return Task.FromResult("code-gen");
-    }
-    
-    public Task<string> HandleApiRequest()
+    public Task<string> HandleApiRequest(HttpRequest contextRequest)
     {
         return Task.FromResult("api");
     }

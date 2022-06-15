@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace CodeGen.Web;
 
 public static class StartupHelper
@@ -11,18 +13,27 @@ public static class StartupHelper
 
     public static void MapCodeGen(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("code-gen", async () =>
+        endpoints.MapGet("code-gen", async context =>
         {
-            await using var scope = endpoints.ServiceProvider.CreateAsyncScope();
-            var handler = scope.ServiceProvider.GetRequiredService<WebRequestHandler>();
-            return await handler.HandleWebAppRequest();
+            var assembly = typeof(StartupHelper).GetTypeInfo().Assembly;
+            var resource = assembly.GetManifestResourceStream("CodeGen.Web.index.html");
+            if (resource == null)
+            {
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsync("Error: CodeGen.Web.index.html");
+                return;
+            }
+
+            context.Response.ContentType = "text/html; charset=UTF-8";
+            await resource.CopyToAsync(context.Response.Body);
         });
 
-        endpoints.MapGet("code-gen-api", async () =>
+        endpoints.MapGet("code-gen-api", async context =>
         {
             await using var scope = endpoints.ServiceProvider.CreateAsyncScope();
             var handler = scope.ServiceProvider.GetRequiredService<WebRequestHandler>();
-            return await handler.HandleApiRequest();
+            var response = await handler.HandleApiRequest(context.Request);
+            await context.Response.WriteAsJsonAsync(response);
         });
     }
 }
