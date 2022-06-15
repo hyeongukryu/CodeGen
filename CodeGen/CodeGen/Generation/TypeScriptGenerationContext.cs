@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 using CodeGen.Analysis;
 using Microsoft.AspNetCore.Mvc.ActionConstraints;
@@ -15,13 +16,20 @@ public class TypeScriptGenerationContext
     {
         if (apiDescription.ActionDescriptor is not ControllerActionDescriptor api)
         {
-            throw new NotImplementedException();
+            _errorMessages.Add("ActionDescriptor " + apiDescription.ActionDescriptor.Id);
+            return;
+        }
+
+        if (api.MethodInfo.GetCustomAttribute<CodeGenIgnoreAttribute>() != null)
+        {
+            return;
         }
 
         var controller = EnsureControllerExists(api.ControllerName);
         if (api.AttributeRouteInfo?.Template == null)
         {
-            throw new NotImplementedException();
+            _errorMessages.Add("Template " + api.ControllerName + " " + api.ActionName);
+            return;
         }
 
         if (api.ActionConstraints is not { Count: 1 })
@@ -32,7 +40,8 @@ public class TypeScriptGenerationContext
 
         if (api.ActionConstraints.First() is not HttpMethodActionConstraint httpMethodActionConstraint)
         {
-            throw new NotImplementedException();
+            _errorMessages.Add("HttpMethodActionConstraint " + api.ControllerName + " " + api.ActionName);
+            return;
         }
 
         if (httpMethodActionConstraint.HttpMethods.Count() != 1)
@@ -41,22 +50,21 @@ public class TypeScriptGenerationContext
             return;
         }
 
-        var parameters = api.Parameters.Select(p =>
+        if (api.Parameters.Any(p => p is not ControllerParameterDescriptor))
         {
-            if (p is not ControllerParameterDescriptor descriptor)
-            {
-                throw new NotImplementedException();
-            }
+            _errorMessages.Add("ControllerParameterDescriptor " + api.ControllerName + " " + api.ActionName);
+            return;
+        }
 
-            return descriptor;
-        }).ToList();
+        var parameters = api.Parameters.Select(d => (ControllerParameterDescriptor)d).ToList();
 
         var bodyParameters = (from p in parameters
             where p.BindingInfo?.BindingSource?.Id == "Body"
             select p).ToList();
         if (bodyParameters.Count > 1)
         {
-            throw new NotImplementedException();
+            _errorMessages.Add("bodyParameters " + api.ControllerName + " " + api.ActionName);
+            return;
         }
 
         var pathParameters = from p in parameters
@@ -69,16 +77,25 @@ public class TypeScriptGenerationContext
 
         if (apiDescription.SupportedResponseTypes.Count > 1)
         {
-            throw new NotImplementedException();
+            _errorMessages.Add("SupportedResponseTypes " + api.ControllerName + " " + api.ActionName);
+            return;
         }
 
         var responseType = apiDescription.SupportedResponseTypes.FirstOrDefault()?.Type;
+        if (responseType == null)
+        {
+            if (api.MethodInfo.GetCustomAttribute(typeof(CommandAttribute)) == null)
+            {
+                _errorMessages.Add("ResponseType " + api.ControllerName + " " + api.ActionName);
+                return;
+            }
+        }
 
         controller.Actions.Add(new CodeGenAction(controller, api.ActionName,
             api.AttributeRouteInfo.Template,
             HttpMethods.GetCanonicalizedValue(httpMethodActionConstraint.HttpMethods.First()),
             bodyParameters.FirstOrDefault(),
-            pathParameters.ToList(), queryParameters.ToList(), responseType));
+            pathParameters.ToList(), queryParameters.ToList(), responseType, responseType == null));
     }
 
     private CodeGenController EnsureControllerExists(string controllerName)
@@ -101,11 +118,14 @@ public class TypeScriptGenerationContext
         definitionNames.Add("_Dayjs");
         definitionNames.Add("boolean");
         definitionNames.Add("bigint");
-        converterMethodNames.Add("_convert_string_string");
-        converterMethodNames.Add("_convert_string_number");
-        converterMethodNames.Add("_convert_string_bigint");
-        converterMethodNames.Add("_convert_boolean_boolean");
-        converterMethodNames.Add("_convert_string__Dayjs");
+        converterMethodNames.Add("_convert_string_TO_string");
+        converterMethodNames.Add("_convert_string_TO_number");
+        converterMethodNames.Add("_convert_number_TO_string");
+        converterMethodNames.Add("_convert_string_TO_bigint");
+        converterMethodNames.Add("_convert_bigint_TO_string");
+        converterMethodNames.Add("_convert_boolean_TO_boolean");
+        converterMethodNames.Add("_convert_string_TO__Dayjs");
+        converterMethodNames.Add("_convert__Dayjs_TO_string");
     }
 
     private (ICollection<string>, ICollection<string>, ICollection<string>, ICollection<string>) Generate()
@@ -129,27 +149,59 @@ public class TypeScriptGenerationContext
             builder.AppendLine($"export const {controller.Name} = {{");
             foreach (var action in controller.Actions)
             {
-                if (action.ResponseType == null)
+                // action.PathParameters
+                // action.QueryParameters
+
+                CodeGenType? responseType = null;
+                if (action.ResponseType != null)
                 {
-                    continue;
+                    if (!action.ResponseType.IsEnumerable() && action.ResponseType.GetNullableElementType() != null)
+                    {
+                        _errorMessages.Add("ResponseType.GetNullableElementType " + action.Controller.Name + " " +
+                                           action.Name);
+                        continue;
+                    }
+
+                    responseType = action.ResponseType.ToCodeGenType();
+                    converterGenerator.GenerateIfNotExists(responseType);
                 }
 
-                var responseType = action.ResponseType.IsEnumerable()
-                    ? action.ResponseType.GetEnumerableElementType()!
-                    : action.ResponseType;
-                var responseTypeIsEnumerable = action.ResponseType.IsEnumerable();
-                var responseTypeName =
-                    TypeScriptHelper.GetFullWebAppTypeName(responseType, responseTypeIsEnumerable, false);
-                converterGenerator.GenerateIfNotExists(responseType, responseTypeIsEnumerable, false);
-                var converterName = TypeScriptHelper.GetConverterName(responseType, responseTypeIsEnumerable, false);
-                var actionName = TypeScriptHelper.GetPropertyName(action.Name);
-                var urlBuilderName = TypeScriptHelper.GetUrlName(action);
+                CodeGenType? payloadType = null;
+                if (action.BodyParameter != null)
+                {
+                    payloadType = action.BodyParameter.ParameterInfo.ToCodeGenType();
+                    converterGenerator.GenerateIfNotExists(payloadType);
+                }
 
-                builder.AppendLine($"    async {actionName}(): Promise<{responseTypeName}> {{");
-                builder.AppendLine($"        const _url = {urlBuilderName}();");
-                builder.AppendLine($"        const _response = await _http.{action.HttpMethod.ToLower()}(_url);");
+                var payloadParameter = action.BodyParameter != null && payloadType != null
+                    ? $"{action.BodyParameter.Name}: {payloadType.GetFullWebAppTypeName()}"
+                    : null;
+                var payloadArgument = action.BodyParameter != null && payloadType != null
+                    ? $", {payloadType.GetConverterName(true)}({action.BodyParameter.Name})"
+                    : "";
+
+                var actionParameters = new List<string>();
+                if (payloadParameter != null)
+                {
+                    actionParameters.Add(payloadParameter);
+                }
+
+                var actionName = action.Name.ToCamelCase();
+                var urlBuilderName = action.GetUrlName();
+                var responseTypeName = responseType == null ? "void" : responseType.GetFullWebAppTypeName();
                 builder.AppendLine(
-                    $"        return _restoreCircularReferences({converterName}(_response.data), _createObject);");
+                    $"    async {actionName}({string.Join(", ", actionParameters)}): Promise<{responseTypeName}> {{");
+                builder.AppendLine($"        const _url = {urlBuilderName}();");
+                builder.AppendLine(
+                    $"        const _response = await _http.{action.HttpMethod.ToLower()}(_url{payloadArgument});");
+
+                if (responseType != null)
+                {
+                    var responseConverterName = responseType.GetConverterName(false);
+                    builder.AppendLine(
+                        $"        return _restoreCircularReferences({responseConverterName}(_response.data), _createObject);");
+                }
+
                 builder.AppendLine("    },");
             }
 
@@ -169,7 +221,9 @@ public class TypeScriptGenerationContext
 
         if (_errorMessages.Any())
         {
-            builder.AppendLine(string.Join(separator, _errorMessages));
+            builder.AppendLine("ERROR");
+            builder.AppendLine();
+            builder.AppendLine(string.Join(Environment.NewLine, _errorMessages));
         }
 
         var assembly = typeof(TypeScriptGenerationContext).Assembly;

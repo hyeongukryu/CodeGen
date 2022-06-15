@@ -1,5 +1,3 @@
-using CodeGen.Analysis;
-
 namespace CodeGen.Generation;
 
 public class TypeScriptConverterGenerator
@@ -16,9 +14,15 @@ public class TypeScriptConverterGenerator
         _definitionGenerator = definitionGenerator;
     }
 
-    public void GenerateIfNotExists(Type type, bool isArray, bool isNullable)
+    public void GenerateIfNotExists(CodeGenType type)
     {
-        var converterName = TypeScriptHelper.GetConverterName(type, isArray, isNullable);
+        DoGenerateIfNotExists(type, true);
+        DoGenerateIfNotExists(type, false);
+    }
+
+    private void DoGenerateIfNotExists(CodeGenType type, bool reverse)
+    {
+        var converterName = type.GetConverterName(reverse);
         if (_converterNames.Contains(converterName))
         {
             return;
@@ -27,16 +31,18 @@ public class TypeScriptConverterGenerator
         _converterNames.Add(converterName);
         _definitionGenerator.GenerateIfNotExists(type);
 
-        var fullPayloadTypeName = TypeScriptHelper.GetFullPayloadTypeName(type, isArray, isNullable);
-        var fullWebAppTypeName = TypeScriptHelper.GetFullWebAppTypeName(type, isArray, isNullable);
+        var fullPayloadTypeName = type.GetFullPayloadTypeName();
+        var fullWebAppTypeName = type.GetFullWebAppTypeName();
+        var fromType = !reverse ? fullPayloadTypeName : fullWebAppTypeName;
+        var toType = !reverse ? fullWebAppTypeName : fullPayloadTypeName;
 
-        if (isNullable)
+        if (type.IsNullable)
         {
-            var delegateConverterName = TypeScriptHelper.GetConverterName(type, isArray, false);
-            GenerateIfNotExists(type, isArray, false);
-
+            var nonNullableType = new CodeGenType(type.BaseType, type.IsEnumerable, false);
+            var delegateConverterName = nonNullableType.GetConverterName(reverse);
+            DoGenerateIfNotExists(nonNullableType, reverse);
             _converterCodes.Add(
-                @$"function {converterName}(from: {fullPayloadTypeName}): {fullWebAppTypeName} {{
+                @$"function {converterName}(from: {fromType}): {toType} {{
     if (from === null) {{
         return null;
     }}
@@ -45,51 +51,44 @@ public class TypeScriptConverterGenerator
             return;
         }
 
-        if (isArray)
+        if (type.IsEnumerable)
         {
-            var elementConverterName = TypeScriptHelper.GetConverterName(type, false, false);
-            GenerateIfNotExists(type, false, false);
+            var elementType = new CodeGenType(type.BaseType, false, false);
+            var elementConverterName = elementType.GetConverterName(reverse);
+            DoGenerateIfNotExists(elementType, reverse);
 
             _converterCodes.Add(
-                @$"function {converterName}(from: {fullPayloadTypeName}): {fullWebAppTypeName} {{
+                @$"function {converterName}(from: {fromType}): {toType} {{
     if (from.hasOwnProperty('$ref')) {{
         return from as any;
     }}
     if (from.hasOwnProperty('$values')) {{
         from = (from as any).$values;
-        const to: {fullWebAppTypeName} = from.map(element => {elementConverterName}(element));
+        const to: {toType} = from.map(element => {elementConverterName}(element));
         return {{ ...from, $values: to }} as any;
     }}
-    const to: {fullWebAppTypeName} = from.map(element => {elementConverterName}(element));
+    const to: {toType} = from.map(element => {elementConverterName}(element));
     return to;
 }}");
             return;
         }
 
         var propertyMappings = string.Join(Environment.NewLine,
-            type.GetProperties().Select(property =>
+            type.BaseType.GetProperties().Select(property =>
             {
-                var propertyIsEnumerable = property.PropertyType.IsEnumerable();
-                var propertyIsNullable = property.IsNullable();
-                var propertyType = property.PropertyType.IsEnumerable()
-                    ? property.PropertyType.GetEnumerableElementType()!
-                    : (propertyIsNullable
-                        ? property.PropertyType.GetNullableElementType() ?? property.PropertyType
-                        : property.PropertyType);
-
-                var propertyConvertMethodName =
-                    TypeScriptHelper.GetConverterName(propertyType, propertyIsEnumerable, propertyIsNullable);
-                GenerateIfNotExists(propertyType, propertyIsEnumerable, propertyIsNullable);
-                var propertyName = TypeScriptHelper.GetPropertyName(property.Name);
+                var propertyType = property.ToCodeGenType();
+                var propertyConvertMethodName = propertyType.GetConverterName(reverse);
+                DoGenerateIfNotExists(propertyType, reverse);
+                var propertyName = property.Name.ToCamelCase();
                 return $"        {propertyName}: {propertyConvertMethodName}(from.{propertyName}),";
             }));
 
         _converterCodes.Add(
-            @$"function {converterName}(from: {fullPayloadTypeName}): {fullWebAppTypeName} {{
+            @$"function {converterName}(from: {fromType}): {toType} {{
     if (from.hasOwnProperty('$ref')) {{
         return from as any;
     }}
-    const to: {fullWebAppTypeName} = {{
+    const to: {toType} = {{
 {propertyMappings}
     }};
     return {{ ...from, ...to }};

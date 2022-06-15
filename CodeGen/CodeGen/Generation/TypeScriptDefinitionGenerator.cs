@@ -1,5 +1,4 @@
 using System.Text;
-using CodeGen.Analysis;
 
 namespace CodeGen.Generation;
 
@@ -14,13 +13,11 @@ public class TypeScriptDefinitionGenerator
         _definitionCodes = definitionCodes;
     }
 
-    private void Generate(Type type, bool generatePayloadName)
+    private void Generate(CodeGenType type, bool generatePayloadName)
     {
-        var properties = type.GetProperties();
+        var properties = type.BaseType.GetProperties();
         var builder = new StringBuilder();
-        var typeName = generatePayloadName
-            ? TypeScriptHelper.GetPayloadTypeName(type)
-            : TypeScriptHelper.GetWebAppTypeName(type);
+        var typeName = generatePayloadName ? type.GetPayloadTypeName() : type.GetWebAppTypeName();
 
         if (_definitionNames.Contains(typeName))
         {
@@ -33,27 +30,21 @@ public class TypeScriptDefinitionGenerator
 
         foreach (var property in properties)
         {
-            var propertyIsEnumerable = property.PropertyType.IsEnumerable();
-            var propertyIsNullable = property.IsNullable();
-            var propertyType = property.PropertyType.IsEnumerable()
-                ? property.PropertyType.GetEnumerableElementType()!
-                : (propertyIsNullable
-                    ? property.PropertyType.GetNullableElementType() ?? property.PropertyType
-                    : property.PropertyType);
+            var propertyType = property.ToCodeGenType();
 
             var propertyTypeName = generatePayloadName
-                ? TypeScriptHelper.GetFullPayloadTypeName(propertyType, propertyIsEnumerable, propertyIsNullable)
-                : TypeScriptHelper.GetFullWebAppTypeName(propertyType, propertyIsEnumerable, propertyIsNullable);
+                ? propertyType.GetFullPayloadTypeName()
+                : propertyType.GetFullWebAppTypeName();
 
             GenerateIfNotExists(propertyType);
-            builder.AppendLine($"        {TypeScriptHelper.GetPropertyName(property.Name)}: {propertyTypeName};");
+            builder.AppendLine($"        {property.Name.ToCamelCase()}: {propertyTypeName};");
         }
 
         builder.Append('}');
         _definitionCodes.Add(builder.ToString());
     }
 
-    public void GenerateIfNotExists(Type type)
+    public void GenerateIfNotExists(CodeGenType type)
     {
         Generate(type, false);
         Generate(type, true);

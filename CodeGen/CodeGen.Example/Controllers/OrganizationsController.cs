@@ -1,4 +1,5 @@
 using System.Text;
+using CodeGen.Analysis;
 using CodeGen.Example.Data;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
@@ -9,6 +10,14 @@ namespace CodeGen.Example.Controllers;
 [Route("organizations")]
 public class OrganizationsController : ControllerBase
 {
+    [HttpGet("empty")]
+    [Command]
+    public ActionResult ReturnsEmpty()
+    {
+        return Ok();
+    }
+
+
     [HttpGet]
     public ActionResult<IEnumerable<Department>> GetAll()
     {
