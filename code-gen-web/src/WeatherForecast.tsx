@@ -1,7 +1,7 @@
-import { WeatherForecastController } from './apiold';
+import { WeatherForecast } from './api';
 
 function WeatherForecastPage() {
-  const { error, data } = WeatherForecastController.useGet(10, BigInt(12), { refreshInterval: 1000 });
+  const { error, data } = WeatherForecast.useSWRGet(10, 1234, BigInt(12), { refreshInterval: 1000 });
   if (error) {
     return <div>error</div>;
   }

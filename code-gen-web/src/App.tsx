@@ -1,7 +1,7 @@
 import { _isComputed } from 'mobx/dist/internal';
 import { useEffect, useState } from 'react';
-import { SWRConfig } from 'swr'
 import http from './http';
+import { SWRConfig } from 'swr'
 import Organizations from './Organizations'
 import WeatherForecast from './WeatherForecast'
 
@@ -17,6 +17,10 @@ function App() {
     <div className="App">
       <header className="App-header">
         {code === undefined ? <p>Loading...</p> : <code>{code}</code>}
+        {/* <SWRConfig value={{ fetcher }}>
+          <Organizations />
+          <WeatherForecast />
+        </SWRConfig> */}
       </header>
     </div>
   )

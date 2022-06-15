@@ -91,25 +91,57 @@ function _convert__Dayjs_TO_string(from: _Dayjs): string {
 // API
 export const Organizations = {
     async returnsEmpty(): Promise<void> {
-        const _url = _Organizations_GET_ReturnsEmpty_url();
+        const _url: string = _Organizations_GET_ReturnsEmpty_url();
         const _response = await _http.get(_url);
     },
     async getAll(): Promise<Department[]> {
-        const _url = _Organizations_GET_GetAll_url();
+        const _url: string = _Organizations_GET_GetAll_url();
         const _response = await _http.get(_url);
         return _restoreCircularReferences(_convert__api_Department_TO_Department_Array(_response.data), _createObject);
     },
+    useSWRGetAll(_config: SWRConfiguration = {}) {
+        const _url: string = _Organizations_GET_GetAll_url();
+        const _middleware: _Middleware = (useSWRNext: _SWRHook) => (key, fetcher, config) => {
+            if (fetcher === null) {
+                return useSWRNext(key, fetcher, config);
+            }
+            const _fetchAndConvert = async (...args: any[]) => {
+                const data: any = await Promise.resolve(fetcher(...args));
+        return _restoreCircularReferences(_convert__api_Department_TO_Department_Array(data), _createObject);
+            };
+            return useSWRNext(key, _fetchAndConvert, config);
+        };
+        return _useSWR<Department[]>(_url, { ..._config, use: [_middleware] });
+    },
     async echo(request: EchoRequest): Promise<EchoResponse> {
-        const _url = _Organizations_POST_Echo_url();
-        const _response = await _http.post(_url, _convert_EchoRequest_TO__api_EchoRequest(request));
+        const _url: string = _Organizations_POST_Echo_url();
+        const _payload: _api_EchoRequest = _convert_EchoRequest_TO__api_EchoRequest(request);
+        const _response = await _http.post(_url, _payload);
         return _restoreCircularReferences(_convert__api_EchoResponse_TO_EchoResponse(_response.data), _createObject);
     },
 }
 
-
 export const WeatherForecast = {
+    async get(count: number, temp: number, value: bigint): Promise<WeatherForecast[]> {
+        const _url: string = _WeatherForecast_GET_Get_url(count, temp, value);
+        const _response = await _http.get(_url);
+        return _restoreCircularReferences(_convert__api_WeatherForecast_TO_WeatherForecast_Array(_response.data), _createObject);
+    },
+    useSWRGet(count: number, temp: number, value: bigint, _config: SWRConfiguration = {}) {
+        const _url: string = _WeatherForecast_GET_Get_url(count, temp, value);
+        const _middleware: _Middleware = (useSWRNext: _SWRHook) => (key, fetcher, config) => {
+            if (fetcher === null) {
+                return useSWRNext(key, fetcher, config);
+            }
+            const _fetchAndConvert = async (...args: any[]) => {
+                const data: any = await Promise.resolve(fetcher(...args));
+        return _restoreCircularReferences(_convert__api_WeatherForecast_TO_WeatherForecast_Array(data), _createObject);
+            };
+            return useSWRNext(key, _fetchAndConvert, config);
+        };
+        return _useSWR<WeatherForecast[]>(_url, { ..._config, use: [_middleware] });
+    },
 }
-
 
 // Types
 export interface _api_Person {
@@ -158,6 +190,22 @@ export interface _api_EchoRequest {
         b: string;
         c: string;
         d: string;
+}
+
+export interface WeatherForecast {
+        date: _Dayjs;
+        temperatureC: number;
+        temperatureF: number;
+        summary: string | null;
+        value: bigint;
+}
+
+export interface _api_WeatherForecast {
+        date: string;
+        temperatureC: string;
+        temperatureF: string;
+        summary: string | null;
+        value: string;
 }
 
 // Converters
@@ -316,4 +364,78 @@ function _convert__api_EchoRequest_TO_EchoRequest(from: _api_EchoRequest): EchoR
     return { ...from, ...to };
 }
 
+function _convert_WeatherForecast_TO__api_WeatherForecast(from: WeatherForecast): _api_WeatherForecast {
+    if (from.hasOwnProperty('$ref')) {
+        return from as any;
+    }
+    const to: _api_WeatherForecast = {
+        date: _convert__Dayjs_TO_string(from.date),
+        temperatureC: _convert_number_TO_string(from.temperatureC),
+        temperatureF: _convert_number_TO_string(from.temperatureF),
+        summary: _convert_string_TO_string_Nullable(from.summary),
+        value: _convert_bigint_TO_string(from.value),
+    };
+    return { ...from, ...to };
+}
+
+function _convert_WeatherForecast_TO__api_WeatherForecast_Array(from: WeatherForecast[]): _api_WeatherForecast[] {
+    if (from.hasOwnProperty('$ref')) {
+        return from as any;
+    }
+    if (from.hasOwnProperty('$values')) {
+        from = (from as any).$values;
+        const to: _api_WeatherForecast[] = from.map(element => _convert_WeatherForecast_TO__api_WeatherForecast(element));
+        return { ...from, $values: to } as any;
+    }
+    const to: _api_WeatherForecast[] = from.map(element => _convert_WeatherForecast_TO__api_WeatherForecast(element));
+    return to;
+}
+
+function _convert__api_WeatherForecast_TO_WeatherForecast(from: _api_WeatherForecast): WeatherForecast {
+    if (from.hasOwnProperty('$ref')) {
+        return from as any;
+    }
+    const to: WeatherForecast = {
+        date: _convert_string_TO__Dayjs(from.date),
+        temperatureC: _convert_string_TO_number(from.temperatureC),
+        temperatureF: _convert_string_TO_number(from.temperatureF),
+        summary: _convert_string_TO_string_Nullable(from.summary),
+        value: _convert_string_TO_bigint(from.value),
+    };
+    return { ...from, ...to };
+}
+
+function _convert__api_WeatherForecast_TO_WeatherForecast_Array(from: _api_WeatherForecast[]): WeatherForecast[] {
+    if (from.hasOwnProperty('$ref')) {
+        return from as any;
+    }
+    if (from.hasOwnProperty('$values')) {
+        from = (from as any).$values;
+        const to: WeatherForecast[] = from.map(element => _convert__api_WeatherForecast_TO_WeatherForecast(element));
+        return { ...from, $values: to } as any;
+    }
+    const to: WeatherForecast[] = from.map(element => _convert__api_WeatherForecast_TO_WeatherForecast(element));
+    return to;
+}
+
 // URL builders
+function _Organizations_GET_ReturnsEmpty_url(): string {
+    return `organizations/empty`;
+}
+
+function _Organizations_GET_GetAll_url(): string {
+    return `organizations`;
+}
+
+function _Organizations_POST_Echo_url(): string {
+    return `organizations`;
+}
+
+function _WeatherForecast_GET_Get_url(count: number, temp: number, value: bigint): string {
+    const _params = new URLSearchParams();
+    if (value !== null) {
+        _params.append('value', value.toString());
+    }
+    const _queryString = _params.toString();
+    return `weather-forecast/${count.toString()}/${temp.toString()}`+ (_queryString.length ? '?' + _queryString : '');
+}

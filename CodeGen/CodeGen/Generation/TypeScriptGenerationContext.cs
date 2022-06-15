@@ -187,7 +187,7 @@ public class TypeScriptGenerationContext
                     : null;
 
                 var actionParameters = pathParameters.Concat(queryParameters)
-                    .Concat(payloadParameter != null ? new[] { payloadParameter } : Array.Empty<string>());
+                    .Concat(payloadParameter != null ? new[] { payloadParameter } : Array.Empty<string>()).ToList();
 
                 var pathArgs = action.PathParameters.Select(p => p.Name).ToList();
                 var queryArgs = action.QueryParameters.Select(p => p.Name).ToList();
@@ -211,12 +211,34 @@ public class TypeScriptGenerationContext
 
                 if (responseType != null)
                 {
-                    var responseConverterName = responseType.GetConverterName(false);
                     builder.AppendLine(
-                        $"        return _restoreCircularReferences({responseConverterName}(_response.data), _createObject);");
+                        $"        return _restoreCircularReferences({responseType.GetConverterName(false)}(_response.data), _createObject);");
                 }
 
                 builder.AppendLine("    },");
+
+                if (action.HttpMethod == "GET" && responseType != null)
+                {
+                    var swrParameters = actionParameters.Concat(new[] { "_config: SWRConfiguration = {}" });
+                    builder.AppendLine(
+                        $"    useSWR{actionName.ToPascalCase()}({string.Join(", ", swrParameters)}) {{");
+                    builder.AppendLine($"        const _url: string = {urlBuilderName}({urlBuilderArgs});");
+                    builder.AppendLine(
+                        "        const _middleware: _Middleware = (useSWRNext: _SWRHook) => (key, fetcher, config) => {");
+                    builder.AppendLine("            if (fetcher === null) {");
+                    builder.AppendLine("                return useSWRNext(key, fetcher, config);");
+                    builder.AppendLine("            }");
+                    builder.AppendLine("            const _fetchAndConvert = async (...args: any[]) => {");
+                    builder.AppendLine("                const data: any = await Promise.resolve(fetcher(...args));");
+                    builder.AppendLine(
+                        $"        return _restoreCircularReferences({responseType.GetConverterName(false)}(data), _createObject);");
+                    builder.AppendLine("            };");
+                    builder.AppendLine("            return useSWRNext(key, _fetchAndConvert, config);");
+                    builder.AppendLine("        };");
+                    builder.AppendLine("        return _useSWR<" + responseType.GetFullWebAppTypeName() +
+                                       ">(_url, { ..._config, use: [_middleware] });");
+                    builder.AppendLine("    },");
+                }
 
                 var urlBuilder = new StringBuilder();
                 var urlBuilderParameters = string.Join(", ", pathParameters.Concat(queryParameters));
@@ -235,12 +257,12 @@ public class TypeScriptGenerationContext
                     urlBuilder.AppendLine("    const _queryString = _params.toString();");
                 }
 
-                var routeTemplate = Regex.Replace(action.Template, ":(.*?)}", ".toString()}")
-                    .Replace("{", "${");
+                var routeTemplate = Regex.Replace(action.Template, ":(.*?)}", "}")
+                    .Replace("{", "${").Replace("}", ".toString()}");
                 urlBuilder.AppendLine(
                     $"    return `{routeTemplate}`" +
                     (queryArgs.Count > 0 ? "+ (_queryString.length ? '?' + _queryString : '')" : "") + ";");
-                urlBuilder.AppendLine($"}}");
+                urlBuilder.Append($"}}");
                 urlBuilderCodes.Add(urlBuilder.ToString());
             }
 

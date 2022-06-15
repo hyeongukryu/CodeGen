@@ -119,6 +119,12 @@ public static class TypeScriptHelper
         return JsonNamingPolicy.CamelCase.ConvertName(name);
     }
 
+    public static string ToPascalCase(this string name)
+    {
+        var pascal = JsonNamingPolicy.CamelCase.ConvertName(name);
+        return pascal[..1].ToUpper() + pascal[1..];
+    }
+
     public static string GetUrlName(this CodeGenAction action)
     {
         return $"_{action.Controller.Name}_{action.HttpMethod}_{action.Name}_url";

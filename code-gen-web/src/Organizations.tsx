@@ -1,7 +1,7 @@
 import { Organizations } from './api';
 
-function Organizations() {
-  const { error, data } = Organizations.useGetAll();
+function OrganizationsPage() {
+  const { error, data } = Organizations.useSWRGetAll();
   if (error) {
     return <div>error</div>;
   }
@@ -19,4 +19,4 @@ function Organizations() {
   </div >;
 }
 
-export default Organizations;
+export default OrganizationsPage;

@@ -1,5 +1,6 @@
 using CodeGen.Example.Data;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime.Extensions;
 
 namespace CodeGen.Example.Controllers;
 
@@ -13,18 +14,17 @@ public class WeatherForecastController : ControllerBase
     };
 
     [HttpGet("{count:int}/{temp:int}")]
-    public async Task<IActionResult> Get([FromQuery] long value, [FromRoute] int count,
-        [FromRoute] int temp,
-        [FromServices] OrganizationsController organizationsController)
+    public async Task<WeatherForecast[]> Get([FromQuery] long value,
+        [FromRoute] int count, [FromRoute] int temp)
     {
         await Task.Delay(0);
-        return Ok(Enumerable.Range(1, count).Select(index => new WeatherForecast
+        return Enumerable.Range(1, count).Select(index => new WeatherForecast
             {
-                Date = DateTime.Now.AddDays(index),
+                Date = DateTimeOffset.Now.AddDays(index).ToInstant(),
                 TemperatureC = Random.Shared.Next(-20, 55) + temp,
                 Summary = Summaries[Random.Shared.Next(Summaries.Length)],
                 Value = value
             })
-            .ToArray());
+            .ToArray();
     }
 }

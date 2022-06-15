@@ -1,8 +1,10 @@
+using NodaTime;
+
 namespace CodeGen.Example.Data;
 
 public class WeatherForecast
 {
-    public DateTime Date { get; set; }
+    public Instant Date { get; set; }
 
     public int TemperatureC { get; set; }
 
