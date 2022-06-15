@@ -1,4 +1,4 @@
-using System.Reflection;
+using CodeGen.Analysis;
 
 namespace CodeGen.Web;
 
@@ -8,6 +8,7 @@ public static class StartupHelper
     {
         services.AddEndpointsApiExplorer();
         services.AddScoped<WebRequestHandler>();
+        services.AddScoped<ApiAnalyzer>();
         return services;
     }
 
@@ -15,7 +16,7 @@ public static class StartupHelper
     {
         endpoints.MapGet("code-gen", async context =>
         {
-            var assembly = typeof(StartupHelper).GetTypeInfo().Assembly;
+            var assembly = typeof(StartupHelper).Assembly;
             var resource = assembly.GetManifestResourceStream("CodeGen.Web.index.html");
             if (resource == null)
             {

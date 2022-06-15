@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeGen", "CodeGen\CodeGen.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeGen.Example", "CodeGen.Example\CodeGen.Example.csproj", "{700D3762-8742-4436-9AF5-044E6E8541EB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeGen.Tests", "CodeGen.Tests\CodeGen.Tests.csproj", "{852F4248-5030-4804-AD0E-B1BA554CB3E3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{700D3762-8742-4436-9AF5-044E6E8541EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{700D3762-8742-4436-9AF5-044E6E8541EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{700D3762-8742-4436-9AF5-044E6E8541EB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{852F4248-5030-4804-AD0E-B1BA554CB3E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{852F4248-5030-4804-AD0E-B1BA554CB3E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{852F4248-5030-4804-AD0E-B1BA554CB3E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{852F4248-5030-4804-AD0E-B1BA554CB3E3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
