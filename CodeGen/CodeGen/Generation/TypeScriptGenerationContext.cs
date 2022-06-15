@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using CodeGen.Analysis;
 using Microsoft.AspNetCore.Mvc.ActionConstraints;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
@@ -135,7 +136,6 @@ public class TypeScriptGenerationContext
         ICollection<string> definitionNames = new List<string>();
         ICollection<string> definitionCodes = new List<string>();
         ICollection<string> controllerCodes = new List<string>();
-        ICollection<string> urlBuilderNames = new List<string>();
         ICollection<string> urlBuilderCodes = new List<string>();
 
         AddPrimitiveTypes(converterNames, definitionNames);
@@ -149,9 +149,6 @@ public class TypeScriptGenerationContext
             builder.AppendLine($"export const {controller.Name} = {{");
             foreach (var action in controller.Actions)
             {
-                // action.PathParameters
-                // action.QueryParameters
-
                 CodeGenType? responseType = null;
                 if (action.ResponseType != null)
                 {
@@ -166,6 +163,18 @@ public class TypeScriptGenerationContext
                     converterGenerator.GenerateIfNotExists(responseType);
                 }
 
+                var pathTypes =
+                    (from p in action.PathParameters select p.ParameterInfo.ToCodeGenType()).ToList();
+                var queryTypes =
+                    (from p in action.QueryParameters select p.ParameterInfo.ToCodeGenType()).ToList();
+                pathTypes.ForEach(t => converterGenerator.GenerateIfNotExists(t));
+                queryTypes.ForEach(t => converterGenerator.GenerateIfNotExists(t));
+
+                var pathParameters = pathTypes.Select((t, i) =>
+                    action.PathParameters.ElementAt(i).Name + ": " + t.GetFullWebAppTypeName()).ToList();
+                var queryParameters = queryTypes.Select((t, i) =>
+                    action.QueryParameters.ElementAt(i).Name + ": " + t.GetFullWebAppTypeName()).ToList();
+
                 CodeGenType? payloadType = null;
                 if (action.BodyParameter != null)
                 {
@@ -176,24 +185,29 @@ public class TypeScriptGenerationContext
                 var payloadParameter = action.BodyParameter != null && payloadType != null
                     ? $"{action.BodyParameter.Name}: {payloadType.GetFullWebAppTypeName()}"
                     : null;
-                var payloadArgument = action.BodyParameter != null && payloadType != null
-                    ? $", {payloadType.GetConverterName(true)}({action.BodyParameter.Name})"
-                    : "";
 
-                var actionParameters = new List<string>();
-                if (payloadParameter != null)
-                {
-                    actionParameters.Add(payloadParameter);
-                }
+                var actionParameters = pathParameters.Concat(queryParameters)
+                    .Concat(payloadParameter != null ? new[] { payloadParameter } : Array.Empty<string>());
+
+                var pathArgs = action.PathParameters.Select(p => p.Name).ToList();
+                var queryArgs = action.QueryParameters.Select(p => p.Name).ToList();
+                var urlBuilderArgs = string.Join(", ", pathArgs.Concat(queryArgs));
 
                 var actionName = action.Name.ToCamelCase();
                 var urlBuilderName = action.GetUrlName();
                 var responseTypeName = responseType == null ? "void" : responseType.GetFullWebAppTypeName();
                 builder.AppendLine(
                     $"    async {actionName}({string.Join(", ", actionParameters)}): Promise<{responseTypeName}> {{");
-                builder.AppendLine($"        const _url = {urlBuilderName}();");
+                builder.AppendLine($"        const _url: string = {urlBuilderName}({urlBuilderArgs});");
+                if (payloadType != null && action.BodyParameter != null)
+                {
+                    builder.AppendLine(
+                        $"        const _payload: {payloadType.GetFullPayloadTypeName()} = " +
+                        $"{payloadType.GetConverterName(true)}({action.BodyParameter.Name});");
+                }
+
                 builder.AppendLine(
-                    $"        const _response = await _http.{action.HttpMethod.ToLower()}(_url{payloadArgument});");
+                    $"        const _response = await _http.{action.HttpMethod.ToLower()}(_url{(payloadType != null ? ", _payload" : "")});");
 
                 if (responseType != null)
                 {
@@ -203,9 +217,34 @@ public class TypeScriptGenerationContext
                 }
 
                 builder.AppendLine("    },");
+
+                var urlBuilder = new StringBuilder();
+                var urlBuilderParameters = string.Join(", ", pathParameters.Concat(queryParameters));
+                urlBuilder.AppendLine($"function {urlBuilderName}({urlBuilderParameters}): string {{");
+
+                if (queryArgs.Count > 0)
+                {
+                    urlBuilder.AppendLine("    const _params = new URLSearchParams();");
+                    foreach (var q in queryArgs)
+                    {
+                        urlBuilder.AppendLine("    if (" + q + " !== null) {");
+                        urlBuilder.AppendLine("        _params.append('" + q + "', " + q + ".toString());");
+                        urlBuilder.AppendLine("    }");
+                    }
+
+                    urlBuilder.AppendLine("    const _queryString = _params.toString();");
+                }
+
+                var routeTemplate = Regex.Replace(action.Template, ":(.*?)}", ".toString()}")
+                    .Replace("{", "${");
+                urlBuilder.AppendLine(
+                    $"    return `{routeTemplate}`" +
+                    (queryArgs.Count > 0 ? "+ (_queryString.length ? '?' + _queryString : '')" : "") + ";");
+                urlBuilder.AppendLine($"}}");
+                urlBuilderCodes.Add(urlBuilder.ToString());
             }
 
-            builder.AppendLine($"}}");
+            builder.Append('}');
             controllerCodes.Add(builder.ToString());
         }
 
