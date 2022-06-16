@@ -231,7 +231,7 @@ public class TypeScriptGenerationContext
                     builder.AppendLine("            const _fetchAndConvert = async (...args: any[]) => {");
                     builder.AppendLine("                const data: any = await Promise.resolve(fetcher(...args));");
                     builder.AppendLine(
-                        $"        return _restoreCircularReferences({responseType.GetConverterName(false)}(data), _createObject);");
+                        $"                return _restoreCircularReferences({responseType.GetConverterName(false)}(data), _createObject);");
                     builder.AppendLine("            };");
                     builder.AppendLine("            return useSWRNext(key, _fetchAndConvert, config);");
                     builder.AppendLine("        };");
