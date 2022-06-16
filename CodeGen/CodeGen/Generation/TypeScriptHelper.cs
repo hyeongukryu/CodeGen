@@ -59,8 +59,8 @@ public static class TypeScriptHelper
             case "System.Double": return "number";
             case "System.Single": return "number";
             case "NodaTime.Instant": return "_Dayjs";
-            case "NodaTime.LocalDate": return "_Dayjs";
-            case "NodaTime.LocalTime": return "_Dayjs";
+            case "NodaTime.LocalDate": return "string";
+            case "NodaTime.LocalTime": return "string";
             case "Microsoft.AspNetCore.Mvc.FileContentResult": return "";
             default:
                 return type.BaseType.Name;
