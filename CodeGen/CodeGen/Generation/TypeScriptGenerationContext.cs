@@ -200,16 +200,15 @@ public class TypeScriptGenerationContext
                 var responseTypeName = responseType == null ? "void" : responseType.GetFullWebAppTypeName();
                 builder.AppendLine(
                     $"    async {actionName}({string.Join(", ", actionParameters)}): Promise<{responseTypeName}> {{");
-                builder.AppendLine($"        const _url: string = {urlBuilderName}({urlBuilderArgs});");
+
+                var payloadArgument = "";
                 if (payloadType != null && action.BodyParameter != null)
                 {
-                    builder.AppendLine(
-                        $"        const _payload: {payloadType.GetFullPayloadTypeName()} = " +
-                        $"{payloadType.GetConverterName(true)}({action.BodyParameter.Name});");
+                    payloadArgument = ", " + payloadType.GetConverterName(true) + $"({action.BodyParameter.Name})";
                 }
 
-                builder.AppendLine(
-                    $"        const _response = await _http.{action.HttpMethod.ToLower()}(_url{(payloadType != null ? ", _payload" : "")});");
+                builder.AppendLine($"        const _response = await _http.{action.HttpMethod.ToLower()}" +
+                                   $"({urlBuilderName}({urlBuilderArgs}){payloadArgument});");
 
                 if (responseType != null)
                 {
@@ -222,23 +221,10 @@ public class TypeScriptGenerationContext
                 if (action.HttpMethod == "GET" && responseType != null)
                 {
                     var swrParameters = actionParameters.Concat(new[] { "_config: SWRConfiguration = {}" });
-                    builder.AppendLine(
-                        $"    useSWR{actionName.ToPascalCase()}({string.Join(", ", swrParameters)}) {{");
-                    builder.AppendLine($"        const _url: string = {urlBuilderName}({urlBuilderArgs});");
-                    builder.AppendLine(
-                        "        const _middleware: _Middleware = (useSWRNext: _SWRHook) => (key, fetcher, config) => {");
-                    builder.AppendLine("            if (fetcher === null) {");
-                    builder.AppendLine("                return useSWRNext(key, fetcher, config);");
-                    builder.AppendLine("            }");
-                    builder.AppendLine("            const _fetchAndConvert = async (...args: any[]) => {");
-                    builder.AppendLine("                const data: any = await Promise.resolve(fetcher(...args));");
-                    builder.AppendLine(
-                        $"                return _restoreCircularReferences({responseType.GetConverterName(false)}(data), _createObject);");
-                    builder.AppendLine("            };");
-                    builder.AppendLine("            return useSWRNext(key, _fetchAndConvert, config);");
-                    builder.AppendLine("        };");
-                    builder.AppendLine("        return _useSWR<" + responseType.GetFullWebAppTypeName() +
-                                       ">(_url, { ..._config, use: [_middleware] });");
+                    builder.AppendLine($"    useSWR{actionName.ToPascalCase()}({string.Join(", ", swrParameters)}) {{");
+                    builder.AppendLine($"        return _useSWR<{responseType.GetFullWebAppTypeName()}>" +
+                                       $"({urlBuilderName}({urlBuilderArgs}), " +
+                                       $"{{ ..._config, use: [_createSWRMiddleware({responseType.GetConverterName(false)})] }});");
                     builder.AppendLine("    },");
                 }
 
@@ -269,7 +255,7 @@ public class TypeScriptGenerationContext
                 urlBuilder.AppendLine(
                     $"    return `{routeTemplate}`" +
                     (queryArgs.Count > 0 ? "+ (_queryString.length ? '?' + _queryString : '')" : "") + ";");
-                urlBuilder.Append($"}}");
+                urlBuilder.Append('}');
                 urlBuilderCodes.Add(urlBuilder.ToString());
             }
 
