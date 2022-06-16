@@ -27,7 +27,7 @@ public static class StartupHelper
 
             context.Response.ContentType = "text/html; charset=UTF-8";
             await resource.CopyToAsync(context.Response.Body);
-        });
+        }).AllowAnonymous();
 
         endpoints.MapGet("code-gen-api", async context =>
         {
@@ -35,6 +35,6 @@ public static class StartupHelper
             var handler = scope.ServiceProvider.GetRequiredService<WebRequestHandler>();
             var response = await handler.HandleApiRequest(context.Request);
             await context.Response.WriteAsJsonAsync(response);
-        });
+        }).AllowAnonymous();
     }
 }
