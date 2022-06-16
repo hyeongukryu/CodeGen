@@ -30,11 +30,11 @@ function _restoreCircularReferences(obj: any, createObject: (obj: any) => any) {
         if (obj === null || typeof obj !== 'object') {
             return;
         }
-        if (obj.hasOwnProperty('$ref')) {
+        if (_hasOwnPropertyRef(obj)) {
             const ref = obj.$ref;
             deferred.push(() => { parent[key] = cache.get(ref); });
             delete obj.$ref;
-        } else if (obj.hasOwnProperty('$values')) {
+        } else if (_hasOwnPropertyValues(obj)) {
             const values = obj.$values;
             delete obj.$values;
             cache.set(obj.$id, values);
@@ -84,6 +84,14 @@ function _convert_string_TO__Dayjs(from: string): _Dayjs {
 
 function _convert__Dayjs_TO_string(from: _Dayjs): string {
     return from.toISOString();
+}
+
+function _hasOwnPropertyRef(o: any): boolean {
+    return o.hasOwnProperty('$ref');
+}
+
+function _hasOwnPropertyValues(o: any): boolean {
+    return o.hasOwnProperty('$values');
 }
 
 ///

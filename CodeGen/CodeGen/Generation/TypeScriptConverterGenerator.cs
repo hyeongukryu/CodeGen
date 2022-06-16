@@ -62,10 +62,10 @@ public class TypeScriptConverterGenerator
 
             _converterCodes.Add(
                 @$"function {converterName}(from: {fromType}): {toType} {{
-    if (from.hasOwnProperty('$ref')) {{
+    if (_hasOwnPropertyRef(from)) {{
         return from as any;
     }}
-    if (from.hasOwnProperty('$values')) {{
+    if (_hasOwnPropertyValues(from)) {{
         from = (from as any).$values;
         const to: {toType} = from.map(element => {elementConverterName}(element));
         return {{ ...from, $values: to }} as any;
@@ -90,7 +90,7 @@ public class TypeScriptConverterGenerator
 
         _converterCodes.Add(
             @$"function {converterName}(from: {fromType}): {toType} {{
-    if (from.hasOwnProperty('$ref')) {{
+    if (_hasOwnPropertyRef(from)) {{
         return from as any;
     }}
     const to: {toType} = {{
