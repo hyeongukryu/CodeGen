@@ -1,4 +1,6 @@
+using System.Reflection;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace CodeGen.Generation;
 
@@ -30,6 +32,11 @@ public class TypeScriptDefinitionGenerator
 
         foreach (var property in properties)
         {
+            if (property.GetCustomAttribute(typeof(JsonIgnoreAttribute)) != null)
+            {
+                continue;
+            }
+
             var propertyType = property.ToCodeGenType();
 
             var propertyTypeName = generatePayloadName
@@ -37,7 +44,7 @@ public class TypeScriptDefinitionGenerator
                 : propertyType.GetFullWebAppTypeName();
 
             GenerateIfNotExists(propertyType);
-            builder.AppendLine($"        {property.Name.ToCamelCase()}: {propertyTypeName};");
+            builder.AppendLine($"    {property.Name.ToCamelCase()}: {propertyTypeName};");
         }
 
         builder.Append('}');

@@ -1,3 +1,6 @@
+using System.Reflection;
+using System.Text.Json.Serialization;
+
 namespace CodeGen.Generation;
 
 public class TypeScriptConverterGenerator
@@ -74,14 +77,16 @@ public class TypeScriptConverterGenerator
         }
 
         var propertyMappings = string.Join(Environment.NewLine,
-            type.BaseType.GetProperties().Select(property =>
-            {
-                var propertyType = property.ToCodeGenType();
-                var propertyConvertMethodName = propertyType.GetConverterName(reverse);
-                DoGenerateIfNotExists(propertyType, reverse);
-                var propertyName = property.Name.ToCamelCase();
-                return $"        {propertyName}: {propertyConvertMethodName}(from.{propertyName}),";
-            }));
+            type.BaseType.GetProperties()
+                .Where(property => property.GetCustomAttribute(typeof(JsonIgnoreAttribute)) == null)
+                .Select(property =>
+                {
+                    var propertyType = property.ToCodeGenType();
+                    var propertyConvertMethodName = propertyType.GetConverterName(reverse);
+                    DoGenerateIfNotExists(propertyType, reverse);
+                    var propertyName = property.Name.ToCamelCase();
+                    return $"        {propertyName}: {propertyConvertMethodName}(from.{propertyName}),";
+                }));
 
         _converterCodes.Add(
             @$"function {converterName}(from: {fromType}): {toType} {{
