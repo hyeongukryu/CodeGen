@@ -137,10 +137,12 @@ public class TypeScriptGenerationContext
         ICollection<string> definitionCodes = new List<string>();
         ICollection<string> controllerCodes = new List<string>();
         ICollection<string> urlBuilderCodes = new List<string>();
+        ISet<Tuple<string, string>> definitionFullNames = new HashSet<Tuple<string, string>>();
 
         AddPrimitiveTypes(converterNames, definitionNames);
 
-        var definitionGenerator = new TypeScriptDefinitionGenerator(definitionNames, definitionCodes);
+        var definitionGenerator =
+            new TypeScriptDefinitionGenerator(definitionNames, definitionCodes, definitionFullNames, _errorMessages);
         var converterGenerator = new TypeScriptConverterGenerator(converterNames, converterCodes, definitionGenerator);
 
         foreach (var controller in _controllers)
@@ -244,13 +246,18 @@ public class TypeScriptGenerationContext
                 var urlBuilderParameters = string.Join(", ", pathParameters.Concat(queryParameters));
                 urlBuilder.AppendLine($"function {urlBuilderName}({urlBuilderParameters}): string {{");
 
-                if (queryArgs.Count > 0)
+                if (queryTypes.Count > 0)
                 {
                     urlBuilder.AppendLine("    const _params = new URLSearchParams();");
-                    foreach (var q in queryArgs)
+                    for (var q = 0; q < queryTypes.Count; q++)
                     {
-                        urlBuilder.AppendLine("    if (" + q + " !== null) {");
-                        urlBuilder.AppendLine("        _params.append('" + q + "', " + q + ".toString());");
+                        var name = queryArgs[q];
+                        var queryConverter = queryTypes[q].GetConverterName(true);
+                        converterGenerator.GenerateIfNotExists(queryTypes[q]);
+                        var nameTemp = "_converted_" + name;
+                        urlBuilder.AppendLine($"    const {nameTemp} = {queryConverter}({name});");
+                        urlBuilder.AppendLine($"    if ({nameTemp} !== null) {{");
+                        urlBuilder.AppendLine($"        _params.append('{name}', {nameTemp}.toString());");
                         urlBuilder.AppendLine("    }");
                     }
 

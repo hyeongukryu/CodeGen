@@ -61,7 +61,7 @@ public static class TypeScriptHelper
             case "NodaTime.Instant": return "_Dayjs";
             case "NodaTime.LocalDate": return "string";
             case "NodaTime.LocalTime": return "string";
-            case "Microsoft.AspNetCore.Mvc.FileContentResult": return "";
+            case "System.DateTime": return "string";
             default:
                 return type.BaseType.Name;
         }
@@ -81,6 +81,7 @@ public static class TypeScriptHelper
             case "NodaTime.Instant": return "string";
             case "NodaTime.LocalDate": return "string";
             case "NodaTime.LocalTime": return "string";
+            case "System.DateTime": return "string";
             default:
                 return "_api_" + type.BaseType.Name;
         }
