@@ -1,11 +1,14 @@
 // auto-generated
 
-import _httpInstance from './http';
-import { AxiosRequestConfig as _AxiosRequestConfig, AxiosResponse as _AxiosResponse } from 'axios';
+import _axios, { AxiosRequestConfig as _AxiosRequestConfig, AxiosResponse as _AxiosResponse } from 'axios';
 import _dayjs, { Dayjs as _Dayjs } from 'dayjs';
 import _useSWR, { Middleware as _Middleware, SWRConfiguration, SWRHook as _SWRHook } from 'swr';
 
-const _http: _Http = _httpInstance;
+let _createHttp: () => _Http = () => _axios.create();
+export function setCreateHttp(createHttp: () => _Http) {
+    _createHttp = createHttp;
+}
+
 interface _Http {
     get<T = any, R = _AxiosResponse<T>>(url: string, config?: _AxiosRequestConfig | undefined): Promise<R>;
     delete<T = any, R = _AxiosResponse<T>>(url: string, config?: _AxiosRequestConfig | undefined): Promise<R>;
@@ -30,11 +33,11 @@ function _restoreCircularReferences(obj: any, createObject: (obj: any) => any) {
         if (obj === null || typeof obj !== 'object') {
             return;
         }
-        if (obj.hasOwnProperty('$ref')) {
+        if (_hasOwnPropertyRef(obj)) {
             const ref = obj.$ref;
             deferred.push(() => { parent[key] = cache.get(ref); });
             delete obj.$ref;
-        } else if (obj.hasOwnProperty('$values')) {
+        } else if (_hasOwnPropertyValues(obj)) {
             const values = obj.$values;
             delete obj.$values;
             cache.set(obj.$id, values);
@@ -86,126 +89,120 @@ function _convert__Dayjs_TO_string(from: _Dayjs): string {
     return from.toISOString();
 }
 
+function _hasOwnPropertyRef(o: any): boolean {
+    return o.hasOwnProperty('$ref');
+}
+
+function _hasOwnPropertyValues(o: any): boolean {
+    return o.hasOwnProperty('$values');
+}
+
+function _createSWRMiddleware(_convert: (from: any) => any): _Middleware {
+    return (useSWRNext: _SWRHook) => (key, fetcher, config) => {
+        if (fetcher === null) {
+            return useSWRNext(key, fetcher, config);
+        }
+        const _fetchAndConvert = async (...args: any[]) => {
+            const data: any = await Promise.resolve(fetcher(...args));
+            return _restoreCircularReferences(_convert(data), _createObject);
+        };
+        return useSWRNext(key, _fetchAndConvert, config);
+    };
+}
+
 ///
 
 // API
 export const Organizations = {
     async returnsEmpty(): Promise<void> {
-        const _url: string = _Organizations_GET_ReturnsEmpty_url();
-        const _response = await _http.get(_url);
+        const _response = await _createHttp().get(_Organizations_GET_ReturnsEmpty_url());
     },
     async getAll(): Promise<Department[]> {
-        const _url: string = _Organizations_GET_GetAll_url();
-        const _response = await _http.get(_url);
+        const _response = await _createHttp().get(_Organizations_GET_GetAll_url());
         return _restoreCircularReferences(_convert__api_Department_TO_Department_Array(_response.data), _createObject);
     },
     useSWRGetAll(_config: SWRConfiguration = {}) {
-        const _url: string = _Organizations_GET_GetAll_url();
-        const _middleware: _Middleware = (useSWRNext: _SWRHook) => (key, fetcher, config) => {
-            if (fetcher === null) {
-                return useSWRNext(key, fetcher, config);
-            }
-            const _fetchAndConvert = async (...args: any[]) => {
-                const data: any = await Promise.resolve(fetcher(...args));
-        return _restoreCircularReferences(_convert__api_Department_TO_Department_Array(data), _createObject);
-            };
-            return useSWRNext(key, _fetchAndConvert, config);
-        };
-        return _useSWR<Department[]>(_url, { ..._config, use: [_middleware] });
+        return _useSWR<Department[]>(_Organizations_GET_GetAll_url(), { ..._config, use: [_createSWRMiddleware(_convert__api_Department_TO_Department_Array)] });
     },
     async echo(request: EchoRequest): Promise<EchoResponse> {
-        const _url: string = _Organizations_POST_Echo_url();
-        const _payload: _api_EchoRequest = _convert_EchoRequest_TO__api_EchoRequest(request);
-        const _response = await _http.post(_url, _payload);
+        const _response = await _createHttp().post(_Organizations_POST_Echo_url(), _convert_EchoRequest_TO__api_EchoRequest(request));
         return _restoreCircularReferences(_convert__api_EchoResponse_TO_EchoResponse(_response.data), _createObject);
     },
 }
 
 export const WeatherForecast = {
     async get(count: number, temp: number, value: bigint): Promise<WeatherForecast[]> {
-        const _url: string = _WeatherForecast_GET_Get_url(count, temp, value);
-        const _response = await _http.get(_url);
+        const _response = await _createHttp().get(_WeatherForecast_GET_Get_url(count, temp, value));
         return _restoreCircularReferences(_convert__api_WeatherForecast_TO_WeatherForecast_Array(_response.data), _createObject);
     },
     useSWRGet(count: number, temp: number, value: bigint, _config: SWRConfiguration = {}) {
-        const _url: string = _WeatherForecast_GET_Get_url(count, temp, value);
-        const _middleware: _Middleware = (useSWRNext: _SWRHook) => (key, fetcher, config) => {
-            if (fetcher === null) {
-                return useSWRNext(key, fetcher, config);
-            }
-            const _fetchAndConvert = async (...args: any[]) => {
-                const data: any = await Promise.resolve(fetcher(...args));
-        return _restoreCircularReferences(_convert__api_WeatherForecast_TO_WeatherForecast_Array(data), _createObject);
-            };
-            return useSWRNext(key, _fetchAndConvert, config);
-        };
-        return _useSWR<WeatherForecast[]>(_url, { ..._config, use: [_middleware] });
+        return _useSWR<WeatherForecast[]>(_WeatherForecast_GET_Get_url(count, temp, value), { ..._config, use: [_createSWRMiddleware(_convert__api_WeatherForecast_TO_WeatherForecast_Array)] });
     },
 }
 
 // Types
 export interface _api_Person {
-        id: string;
-        name: string;
-        registered: string;
-        department: _api_Department;
+    id: string;
+    name: string;
+    registered: string;
+    department: _api_Department;
 }
 
 export interface _api_Department {
-        id: string;
-        name: string | null;
-        people: _api_Person[];
+    id: string;
+    name: string | null;
+    people: _api_Person[];
 }
 
 export interface Person {
-        id: bigint;
-        name: string;
-        registered: _Dayjs;
-        department: Department;
+    id: bigint;
+    name: string;
+    registered: _Dayjs;
+    department: Department;
 }
 
 export interface Department {
-        id: number;
-        name: string | null;
-        people: Person[];
+    id: number;
+    name: string | null;
+    people: Person[];
 }
 
 export interface EchoResponse {
-        content: string;
+    content: string;
 }
 
 export interface _api_EchoResponse {
-        content: string;
+    content: string;
 }
 
 export interface EchoRequest {
-        a: bigint;
-        b: number;
-        c: string;
-        d: _Dayjs;
+    a: bigint;
+    b: number;
+    c: string;
+    d: _Dayjs;
 }
 
 export interface _api_EchoRequest {
-        a: string;
-        b: string;
-        c: string;
-        d: string;
+    a: string;
+    b: string;
+    c: string;
+    d: string;
 }
 
 export interface WeatherForecast {
-        date: _Dayjs;
-        temperatureC: number;
-        temperatureF: number;
-        summary: string | null;
-        value: bigint;
+    date: _Dayjs;
+    temperatureC: number;
+    temperatureF: number;
+    summary: string | null;
+    value: bigint;
 }
 
 export interface _api_WeatherForecast {
-        date: string;
-        temperatureC: string;
-        temperatureF: string;
-        summary: string | null;
-        value: string;
+    date: string;
+    temperatureC: string;
+    temperatureF: string;
+    summary: string | null;
+    value: string;
 }
 
 // Converters
@@ -217,7 +214,7 @@ function _convert_string_TO_string_Nullable(from: string | null): string | null 
 }
 
 function _convert_Person_TO__api_Person(from: Person): _api_Person {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
     const to: _api_Person = {
@@ -230,10 +227,10 @@ function _convert_Person_TO__api_Person(from: Person): _api_Person {
 }
 
 function _convert_Person_TO__api_Person_Array(from: Person[]): _api_Person[] {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
-    if (from.hasOwnProperty('$values')) {
+    if (_hasOwnPropertyValues(from)) {
         from = (from as any).$values;
         const to: _api_Person[] = from.map(element => _convert_Person_TO__api_Person(element));
         return { ...from, $values: to } as any;
@@ -243,7 +240,7 @@ function _convert_Person_TO__api_Person_Array(from: Person[]): _api_Person[] {
 }
 
 function _convert_Department_TO__api_Department(from: Department): _api_Department {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
     const to: _api_Department = {
@@ -255,10 +252,10 @@ function _convert_Department_TO__api_Department(from: Department): _api_Departme
 }
 
 function _convert_Department_TO__api_Department_Array(from: Department[]): _api_Department[] {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
-    if (from.hasOwnProperty('$values')) {
+    if (_hasOwnPropertyValues(from)) {
         from = (from as any).$values;
         const to: _api_Department[] = from.map(element => _convert_Department_TO__api_Department(element));
         return { ...from, $values: to } as any;
@@ -268,7 +265,7 @@ function _convert_Department_TO__api_Department_Array(from: Department[]): _api_
 }
 
 function _convert__api_Person_TO_Person(from: _api_Person): Person {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
     const to: Person = {
@@ -281,10 +278,10 @@ function _convert__api_Person_TO_Person(from: _api_Person): Person {
 }
 
 function _convert__api_Person_TO_Person_Array(from: _api_Person[]): Person[] {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
-    if (from.hasOwnProperty('$values')) {
+    if (_hasOwnPropertyValues(from)) {
         from = (from as any).$values;
         const to: Person[] = from.map(element => _convert__api_Person_TO_Person(element));
         return { ...from, $values: to } as any;
@@ -294,7 +291,7 @@ function _convert__api_Person_TO_Person_Array(from: _api_Person[]): Person[] {
 }
 
 function _convert__api_Department_TO_Department(from: _api_Department): Department {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
     const to: Department = {
@@ -306,10 +303,10 @@ function _convert__api_Department_TO_Department(from: _api_Department): Departme
 }
 
 function _convert__api_Department_TO_Department_Array(from: _api_Department[]): Department[] {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
-    if (from.hasOwnProperty('$values')) {
+    if (_hasOwnPropertyValues(from)) {
         from = (from as any).$values;
         const to: Department[] = from.map(element => _convert__api_Department_TO_Department(element));
         return { ...from, $values: to } as any;
@@ -319,7 +316,7 @@ function _convert__api_Department_TO_Department_Array(from: _api_Department[]): 
 }
 
 function _convert_EchoResponse_TO__api_EchoResponse(from: EchoResponse): _api_EchoResponse {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
     const to: _api_EchoResponse = {
@@ -329,7 +326,7 @@ function _convert_EchoResponse_TO__api_EchoResponse(from: EchoResponse): _api_Ec
 }
 
 function _convert__api_EchoResponse_TO_EchoResponse(from: _api_EchoResponse): EchoResponse {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
     const to: EchoResponse = {
@@ -339,7 +336,7 @@ function _convert__api_EchoResponse_TO_EchoResponse(from: _api_EchoResponse): Ec
 }
 
 function _convert_EchoRequest_TO__api_EchoRequest(from: EchoRequest): _api_EchoRequest {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
     const to: _api_EchoRequest = {
@@ -352,7 +349,7 @@ function _convert_EchoRequest_TO__api_EchoRequest(from: EchoRequest): _api_EchoR
 }
 
 function _convert__api_EchoRequest_TO_EchoRequest(from: _api_EchoRequest): EchoRequest {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
     const to: EchoRequest = {
@@ -365,7 +362,7 @@ function _convert__api_EchoRequest_TO_EchoRequest(from: _api_EchoRequest): EchoR
 }
 
 function _convert_WeatherForecast_TO__api_WeatherForecast(from: WeatherForecast): _api_WeatherForecast {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
     const to: _api_WeatherForecast = {
@@ -379,10 +376,10 @@ function _convert_WeatherForecast_TO__api_WeatherForecast(from: WeatherForecast)
 }
 
 function _convert_WeatherForecast_TO__api_WeatherForecast_Array(from: WeatherForecast[]): _api_WeatherForecast[] {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
-    if (from.hasOwnProperty('$values')) {
+    if (_hasOwnPropertyValues(from)) {
         from = (from as any).$values;
         const to: _api_WeatherForecast[] = from.map(element => _convert_WeatherForecast_TO__api_WeatherForecast(element));
         return { ...from, $values: to } as any;
@@ -392,7 +389,7 @@ function _convert_WeatherForecast_TO__api_WeatherForecast_Array(from: WeatherFor
 }
 
 function _convert__api_WeatherForecast_TO_WeatherForecast(from: _api_WeatherForecast): WeatherForecast {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
     const to: WeatherForecast = {
@@ -406,10 +403,10 @@ function _convert__api_WeatherForecast_TO_WeatherForecast(from: _api_WeatherFore
 }
 
 function _convert__api_WeatherForecast_TO_WeatherForecast_Array(from: _api_WeatherForecast[]): WeatherForecast[] {
-    if (from.hasOwnProperty('$ref')) {
+    if (_hasOwnPropertyRef(from)) {
         return from as any;
     }
-    if (from.hasOwnProperty('$values')) {
+    if (_hasOwnPropertyValues(from)) {
         from = (from as any).$values;
         const to: WeatherForecast[] = from.map(element => _convert__api_WeatherForecast_TO_WeatherForecast(element));
         return { ...from, $values: to } as any;
@@ -433,8 +430,9 @@ function _Organizations_POST_Echo_url(): string {
 
 function _WeatherForecast_GET_Get_url(count: number, temp: number, value: bigint): string {
     const _params = new URLSearchParams();
-    if (value !== null) {
-        _params.append('value', value.toString());
+    const _converted_value = _convert_bigint_TO_string(value);
+    if (_converted_value !== null) {
+        _params.append('value', _converted_value.toString());
     }
     const _queryString = _params.toString();
     return `weather-forecast/${count.toString()}/${temp.toString()}`+ (_queryString.length ? '?' + _queryString : '');

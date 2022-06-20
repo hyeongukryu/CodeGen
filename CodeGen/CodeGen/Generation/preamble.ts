@@ -1,11 +1,14 @@
 // auto-generated
 
-import _httpInstance from './http';
-import { AxiosRequestConfig as _AxiosRequestConfig, AxiosResponse as _AxiosResponse } from 'axios';
+import _axios, { AxiosRequestConfig as _AxiosRequestConfig, AxiosResponse as _AxiosResponse } from 'axios';
 import _dayjs, { Dayjs as _Dayjs } from 'dayjs';
 import _useSWR, { Middleware as _Middleware, SWRConfiguration, SWRHook as _SWRHook } from 'swr';
 
-const _http: _Http = _httpInstance;
+let _createHttp: () => _Http = () => _axios.create();
+export function setCreateHttp(createHttp: () => _Http) {
+    _createHttp = createHttp;
+}
+
 interface _Http {
     get<T = any, R = _AxiosResponse<T>>(url: string, config?: _AxiosRequestConfig | undefined): Promise<R>;
     delete<T = any, R = _AxiosResponse<T>>(url: string, config?: _AxiosRequestConfig | undefined): Promise<R>;

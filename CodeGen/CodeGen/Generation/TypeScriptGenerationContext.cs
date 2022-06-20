@@ -207,7 +207,7 @@ public class TypeScriptGenerationContext
                     payloadArgument = ", " + payloadType.GetConverterName(true) + $"({action.BodyParameter.Name})";
                 }
 
-                builder.AppendLine($"        const _response = await _http.{action.HttpMethod.ToLower()}" +
+                builder.AppendLine($"        const _response = await _createHttp().{action.HttpMethod.ToLower()}" +
                                    $"({urlBuilderName}({urlBuilderArgs}){payloadArgument});");
 
                 if (responseType != null)
