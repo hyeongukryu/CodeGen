@@ -10,7 +10,7 @@ const fetcher = (url: string) => http.get(url).then(res => res.data);
 function App() {
   const [code, setCode] = useState<string>();
   useEffect(() => {
-    fetch('/code-gen-api').then(res => res.json()).then(json => setCode(json));
+    fetch('code-gen-api').then(res => res.json()).then(json => setCode(json));
   }, []);
 
   return (
