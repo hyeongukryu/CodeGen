@@ -1,4 +1,3 @@
-import { _isComputed } from 'mobx/dist/internal';
 import http from './http';
 import { SWRConfig } from 'swr'
 import Organizations from './Organizations'
