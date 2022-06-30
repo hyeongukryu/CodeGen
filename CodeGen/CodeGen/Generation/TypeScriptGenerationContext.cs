@@ -129,7 +129,8 @@ public class TypeScriptGenerationContext
         converterMethodNames.Add("_convert__Dayjs_TO_string");
     }
 
-    private (ICollection<string>, ICollection<string>, ICollection<string>, ICollection<string>) Generate()
+    private (ICollection<string>, ICollection<string>, ICollection<string>, ICollection<string>)
+        Generate(bool generateSwr)
     {
         ICollection<string> converterNames = new List<string>();
         ICollection<string> converterCodes = new List<string>();
@@ -218,9 +219,10 @@ public class TypeScriptGenerationContext
 
                 builder.AppendLine("    },");
 
-                if (action.HttpMethod == "GET" && responseType != null)
+                if (generateSwr && action.HttpMethod == "GET" && responseType != null)
                 {
-                    var swrParameters = actionParameters.Concat(new[] { "_config: SWRConfiguration = {}", "_shouldFetch: boolean = true" });
+                    var swrParameters = actionParameters.Concat(new[]
+                        { "_config: SWRConfiguration = {}", "_shouldFetch: boolean = true" });
                     builder.AppendLine($"    useSWR{actionName.ToPascalCase()}({string.Join(", ", swrParameters)}) {{");
                     builder.AppendLine($"        return _useSWR<{responseType.GetFullWebAppTypeName()}>" +
                                        $"(_shouldFetch ? {urlBuilderName}({urlBuilderArgs}) : null, " +
@@ -266,9 +268,9 @@ public class TypeScriptGenerationContext
         return (controllerCodes, definitionCodes, converterCodes, urlBuilderCodes);
     }
 
-    public string Compile()
+    public string Compile(bool generateSwr)
     {
-        var (controllerCodes, definitionCodes, converterCodes, urlBuilderCodes) = Generate();
+        var (controllerCodes, definitionCodes, converterCodes, urlBuilderCodes) = Generate(generateSwr);
 
         var builder = new StringBuilder();
         var separator = Environment.NewLine + Environment.NewLine;
@@ -281,7 +283,10 @@ public class TypeScriptGenerationContext
         }
 
         var assembly = typeof(TypeScriptGenerationContext).Assembly;
-        var resource = assembly.GetManifestResourceStream("CodeGen.Generation.preamble.ts");
+        var resource = assembly.GetManifestResourceStream(
+            generateSwr
+                ? "CodeGen.Generation.preamble-swr.ts"
+                : "CodeGen.Generation.preamble.ts");
         if (resource != null)
         {
             builder.AppendLine(new StreamReader(resource, Encoding.UTF8).ReadToEnd());

@@ -1,3 +1,4 @@
+/* eslint-disable */
 // auto-generated
 
 import _axios, { AxiosRequestConfig as _AxiosRequestConfig, AxiosResponse as _AxiosResponse } from 'axios';
@@ -121,8 +122,8 @@ export const Organizations = {
         const _response = await _createHttp().get(_Organizations_GET_GetAll_url());
         return _restoreCircularReferences(_convert__api_Department_TO_Department_Array(_response.data), _createObject);
     },
-    useSWRGetAll(_config: SWRConfiguration = {}) {
-        return _useSWR<Department[]>(_Organizations_GET_GetAll_url(), { ..._config, use: [_createSWRMiddleware(_convert__api_Department_TO_Department_Array)] });
+    useSWRGetAll(_config: SWRConfiguration = {}, _shouldFetch: boolean = true) {
+        return _useSWR<Department[]>(_shouldFetch ? _Organizations_GET_GetAll_url() : null, { ..._config, use: [_createSWRMiddleware(_convert__api_Department_TO_Department_Array)] });
     },
     async echo(request: EchoRequest): Promise<EchoResponse> {
         const _response = await _createHttp().post(_Organizations_POST_Echo_url(), _convert_EchoRequest_TO__api_EchoRequest(request));
@@ -135,8 +136,8 @@ export const WeatherForecast = {
         const _response = await _createHttp().get(_WeatherForecast_GET_Get_url(count, temp, value));
         return _restoreCircularReferences(_convert__api_WeatherForecast_TO_WeatherForecast_Array(_response.data), _createObject);
     },
-    useSWRGet(count: number, temp: number, value: bigint, _config: SWRConfiguration = {}) {
-        return _useSWR<WeatherForecast[]>(_WeatherForecast_GET_Get_url(count, temp, value), { ..._config, use: [_createSWRMiddleware(_convert__api_WeatherForecast_TO_WeatherForecast_Array)] });
+    useSWRGet(count: number, temp: number, value: bigint, _config: SWRConfiguration = {}, _shouldFetch: boolean = true) {
+        return _useSWR<WeatherForecast[]>(_shouldFetch ? _WeatherForecast_GET_Get_url(count, temp, value) : null, { ..._config, use: [_createSWRMiddleware(_convert__api_WeatherForecast_TO_WeatherForecast_Array)] });
     },
 }
 

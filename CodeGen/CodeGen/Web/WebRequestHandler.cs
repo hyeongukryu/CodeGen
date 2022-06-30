@@ -14,7 +14,9 @@ public class WebRequestHandler
     public Task<string> HandleApiRequest(HttpRequest contextRequest)
     {
         var context = _apiAnalyzer.Analyze();
-        var ts = context.Compile();
+        var generateSwr = contextRequest.Query.TryGetValue("swr", out var values) &&
+                          values.Count == 1 && values[0] == "true";
+        var ts = context.Compile(generateSwr);
         return Task.FromResult(ts);
     }
 }

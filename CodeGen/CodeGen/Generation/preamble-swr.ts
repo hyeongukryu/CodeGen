@@ -3,6 +3,7 @@
 
 import _axios, { AxiosRequestConfig as _AxiosRequestConfig, AxiosResponse as _AxiosResponse } from 'axios';
 import _dayjs, { Dayjs as _Dayjs } from 'dayjs';
+import _useSWR, { Middleware as _Middleware, SWRConfiguration, SWRHook as _SWRHook } from 'swr';
 
 let _createHttp: () => _Http = () => _axios.create();
 export function setCreateHttp(createHttp: () => _Http) {
@@ -95,6 +96,19 @@ function _hasOwnPropertyRef(o: any): boolean {
 
 function _hasOwnPropertyValues(o: any): boolean {
     return o.hasOwnProperty('$values');
+}
+
+function _createSWRMiddleware(_convert: (from: any) => any): _Middleware {
+    return (useSWRNext: _SWRHook) => (key, fetcher, config) => {
+        if (fetcher === null) {
+            return useSWRNext(key, fetcher, config);
+        }
+        const _fetchAndConvert = async (...args: any[]) => {
+            const data: any = await Promise.resolve(fetcher(...args));
+            return _restoreCircularReferences(_convert(data), _createObject);
+        };
+        return useSWRNext(key, _fetchAndConvert, config);
+    };
 }
 
 ///
