@@ -220,10 +220,10 @@ public class TypeScriptGenerationContext
 
                 if (action.HttpMethod == "GET" && responseType != null)
                 {
-                    var swrParameters = actionParameters.Concat(new[] { "_config: SWRConfiguration = {}" });
+                    var swrParameters = actionParameters.Concat(new[] { "_config: SWRConfiguration = {}", "_shouldFetch: boolean = true" });
                     builder.AppendLine($"    useSWR{actionName.ToPascalCase()}({string.Join(", ", swrParameters)}) {{");
                     builder.AppendLine($"        return _useSWR<{responseType.GetFullWebAppTypeName()}>" +
-                                       $"({urlBuilderName}({urlBuilderArgs}), " +
+                                       $"(_shouldFetch ? {urlBuilderName}({urlBuilderArgs}) : null, " +
                                        $"{{ ..._config, use: [_createSWRMiddleware({responseType.GetConverterName(false)})] }});");
                     builder.AppendLine("    },");
                 }
