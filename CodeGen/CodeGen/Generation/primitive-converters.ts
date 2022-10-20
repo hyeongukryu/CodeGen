@@ -1,5 +1,3 @@
-import _dayjs, { Dayjs as _Dayjs } from 'dayjs';
-
 function _convert_string_TO_string(from: string): string {
     return from;
 }

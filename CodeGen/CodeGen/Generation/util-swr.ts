@@ -1,6 +1,6 @@
-import _useSWR, { Middleware as _Middleware, SWRConfiguration, SWRHook as _SWRHook } from 'swr';
+import _useSWR, { SWRConfiguration as _SWRConfiguration, Middleware as _Middleware, SWRHook as _SWRHook } from 'swr';
 
-export function createSWRMiddleware(_convert: (from: any) => any): _Middleware {
+export function _createSWRMiddleware(_convert: (from: any) => any): _Middleware {
     return (useSWRNext: _SWRHook) => (key, fetcher, config) => {
         if (fetcher === null) {
             return useSWRNext(key, fetcher, config);

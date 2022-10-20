@@ -112,13 +112,15 @@ public class TypeScriptGenerationContext
         return controller;
     }
 
+    private static IEnumerable<string> PrimitiveTypes => new[] { "string", "number", "_Dayjs", "boolean", "bigint" };
+
     private static void AddPrimitiveTypes(ICollection<string> converterMethodNames, ICollection<string> definitionNames)
     {
-        definitionNames.Add("string");
-        definitionNames.Add("number");
-        definitionNames.Add("_Dayjs");
-        definitionNames.Add("boolean");
-        definitionNames.Add("bigint");
+        foreach (var primitiveType in PrimitiveTypes)
+        {
+            definitionNames.Add(primitiveType);
+        }
+
         converterMethodNames.Add("_convert_string_TO_string");
         converterMethodNames.Add("_convert_string_TO_number");
         converterMethodNames.Add("_convert_number_TO_string");
@@ -136,6 +138,7 @@ public class TypeScriptGenerationContext
         ICollection<string> definitionNames = new List<string>();
         ICollection<string> definitionCodes = new List<string>();
         ICollection<string> urlBuilderCodes = new List<string>();
+        ICollection<string> urlBuilderNames = new List<string>();
         ICollection<CodeGenControllerResult> controllerResults = new List<CodeGenControllerResult>();
         ISet<Tuple<string, string>> definitionFullNames = new HashSet<Tuple<string, string>>();
 
@@ -148,7 +151,11 @@ public class TypeScriptGenerationContext
         foreach (var controller in _controllers)
         {
             var builder = new StringBuilder();
-            builder.AppendLine($"export const {controller.Name} = {{");
+            if (!split)
+            {
+                builder.AppendLine($"export const {controller.Name} = {{");
+            }
+
             foreach (var action in controller.Actions)
             {
                 CodeGenType? responseType = null;
@@ -196,10 +203,17 @@ public class TypeScriptGenerationContext
                 var urlBuilderArgs = string.Join(", ", pathArgs.Concat(queryArgs));
 
                 var actionName = action.Name.ToCamelCase();
+                if (actionName == "delete")
+                {
+                    // JavaScript reserved word
+                    actionName = "/* delete */ Delete";
+                }
+
                 var urlBuilderName = action.GetUrlName();
                 var responseTypeName = responseType == null ? "void" : responseType.GetFullWebAppTypeName();
                 builder.AppendLine(
-                    $"    async {actionName}({string.Join(", ", actionParameters)}): Promise<{responseTypeName}> {{");
+                    (split ? "export async function" : "async") +
+                    $" {actionName}({string.Join(", ", actionParameters)}): Promise<{responseTypeName}> {{");
 
                 var payloadArgument = "";
                 if (payloadType != null && action.BodyParameter != null)
@@ -207,26 +221,27 @@ public class TypeScriptGenerationContext
                     payloadArgument = ", " + payloadType.GetConverterName(true) + $"({action.BodyParameter.Name})";
                 }
 
-                builder.AppendLine($"        const _response = await _createHttp().{action.HttpMethod.ToLower()}" +
+                builder.AppendLine($"    const _response = await _createHttp().{action.HttpMethod.ToLower()}" +
                                    $"({urlBuilderName}({urlBuilderArgs}){payloadArgument});");
 
                 if (responseType != null)
                 {
                     builder.AppendLine(
-                        $"        return _restoreCircularReferences({responseType.GetConverterName(false)}(_response.data), _createObject);");
+                        $"    return restoreCircularReferences({responseType.GetConverterName(false)}(_response.data), _createObject);");
                 }
 
-                builder.AppendLine("    },");
+                builder.AppendLine("}" + (split ? "" : ","));
 
                 if (generateSwr && action.HttpMethod == "GET" && responseType != null)
                 {
                     var swrParameters = actionParameters.Concat(new[]
-                        { "_config: SWRConfiguration = {}", "_shouldFetch: boolean = true" });
-                    builder.AppendLine($"    useSWR{actionName.ToPascalCase()}({string.Join(", ", swrParameters)}) {{");
-                    builder.AppendLine($"        return _useSWR<{responseType.GetFullWebAppTypeName()}>" +
+                        { "_config: _SWRConfiguration = {}", "_shouldFetch: boolean = true" });
+                    builder.AppendLine((split ? "export function " : "") +
+                                       $"useSWR{actionName.ToPascalCase()}({string.Join(", ", swrParameters)}) {{");
+                    builder.AppendLine($"    return _useSWR<{responseType.GetFullWebAppTypeName()}>" +
                                        $"(_shouldFetch ? {urlBuilderName}({urlBuilderArgs}) : null, " +
                                        $"{{ ..._config, use: [_createSWRMiddleware({responseType.GetConverterName(false)})] }});");
-                    builder.AppendLine("    },");
+                    builder.AppendLine("}" + (split ? "" : ","));
                 }
 
                 var urlBuilder = new StringBuilder();
@@ -258,13 +273,19 @@ public class TypeScriptGenerationContext
                     (queryArgs.Count > 0 ? "+ (_queryString.length ? '?' + _queryString : '')" : "") + ";");
                 urlBuilder.Append('}');
                 urlBuilderCodes.Add(urlBuilder.ToString());
+                urlBuilderNames.Add(urlBuilderName);
             }
 
-            builder.Append('}');
+            if (!split)
+            {
+                builder.Append('}');
+            }
+
             controllerResults.Add(new CodeGenControllerResult(controller.Name, builder.ToString()));
         }
 
-        return new CodeGenResult(controllerResults, definitionCodes, converterCodes, urlBuilderCodes);
+        return new CodeGenResult(controllerResults, definitionCodes, definitionNames,
+            converterCodes, converterNames, urlBuilderCodes, urlBuilderNames);
     }
 
     private static string GetResourceString(string name)
@@ -279,7 +300,7 @@ public class TypeScriptGenerationContext
         return new StreamReader(resource, Encoding.UTF8).ReadToEnd();
     }
 
-    public static string ExportFunctions(string code)
+    private static string ExportFunctions(string code)
     {
         var lines = code.Split(Environment.NewLine);
         var exportedLines = lines.Select(line =>
@@ -324,25 +345,48 @@ public class TypeScriptGenerationContext
             builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
         }
 
-        BeginFile("util.ts");
+        BeginFile("_util.ts");
         builder.AppendLine(GetResourceString("CodeGen.Generation.util.ts"));
         if (generateSwr)
         {
             builder.AppendLine(GetResourceString("CodeGen.Generation.util-swr.ts"));
         }
 
+        var importAllTypes = "import { " +
+                             string.Join(", ", result.DefinitionNames.Where(d => !PrimitiveTypes.Contains(d))) +
+                             " } from './_types';";
+        var importAllConverters = "import { " + string.Join(", ", result.ConverterNames) + " } from './_converters';";
+        var importAllUrlBuilders =
+            "import { " + string.Join(", ", result.UrlBuilderNames) + " } from './_url-builders';";
+
         foreach (var controller in result.Controllers)
         {
             BeginFile($"_api_{controller.Name}.ts");
+            if (split)
+            {
+                builder.AppendLine(importAllTypes);
+                builder.AppendLine(importAllConverters);
+                builder.AppendLine(importAllUrlBuilders);
+
+                builder.AppendLine("import { _createHttp, _createObject, restoreCircularReferences } from './_util';");
+                if (generateSwr)
+                {
+                    builder.AppendLine("import _useSWR, { SWRConfiguration as _SWRConfiguration } from 'swr';");
+                    builder.AppendLine("import { _createSWRMiddleware } from './_util';");
+                }
+            }
+
             builder.AppendLine(controller.Script);
         }
 
-        BeginFile("types.ts");
+        BeginFile("_types.ts");
         builder.AppendLine(string.Join(separator, result.DefinitionCodes));
 
         BeginFile("_converters.ts");
         if (split)
         {
+            builder.AppendLine("import { _hasOwnPropertyRef, _hasOwnPropertyValues } from './_util';");
+            builder.AppendLine(importAllTypes);
             builder.AppendLine(ExportFunctions(GetResourceString("CodeGen.Generation.primitive-converters.ts")));
             builder.AppendLine(ExportFunctions(string.Join(separator, result.ConverterCodes)));
         }
@@ -355,11 +399,23 @@ public class TypeScriptGenerationContext
         BeginFile("_url-builders.ts");
         if (split)
         {
+            builder.AppendLine(importAllConverters);
             builder.AppendLine(ExportFunctions(string.Join(separator, result.UrlBuilderCodes)));
         }
         else
         {
             builder.AppendLine(string.Join(separator, result.UrlBuilderCodes));
+        }
+
+        if (split)
+        {
+            BeginFile("index.ts");
+            builder.AppendLine("export * from './_types';");
+            builder.AppendLine("export * from './_util';");
+            foreach (var controller in result.Controllers)
+            {
+                builder.AppendLine($"export * as {controller.Name} from './_api_{controller.Name}';");
+            }
         }
 
         return builder.ToString();
