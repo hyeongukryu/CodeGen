@@ -9,14 +9,18 @@
 
     <ItemGroup>
       <None Remove="Web\index.html" />
-      <EmbeddedResource Include="Generation\preamble.ts" />
-      <EmbeddedResource Include="Generation\preamble-swr.ts" />
+      <EmbeddedResource Include="Generation\util.ts" />
+      <EmbeddedResource Include="Generation\util-swr.ts" />
       <EmbeddedResource Include="Web\index.html" />
       <EmbeddedResource Include="Generation\header.ts" />
     </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="NodaTime" Version="3.1.4" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Include="Generation\primitive-converters.ts" />
     </ItemGroup>
 
 </Project>

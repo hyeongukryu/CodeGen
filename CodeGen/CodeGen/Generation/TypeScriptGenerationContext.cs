@@ -135,8 +135,8 @@ public class TypeScriptGenerationContext
         ICollection<string> converterCodes = new List<string>();
         ICollection<string> definitionNames = new List<string>();
         ICollection<string> definitionCodes = new List<string>();
-        ICollection<string> controllerCodes = new List<string>();
         ICollection<string> urlBuilderCodes = new List<string>();
+        ICollection<CodeGenControllerResult> controllerResults = new List<CodeGenControllerResult>();
         ISet<Tuple<string, string>> definitionFullNames = new HashSet<Tuple<string, string>>();
 
         AddPrimitiveTypes(converterNames, definitionNames);
@@ -261,10 +261,10 @@ public class TypeScriptGenerationContext
             }
 
             builder.Append('}');
-            controllerCodes.Add(builder.ToString());
+            controllerResults.Add(new CodeGenControllerResult(controller.Name, builder.ToString()));
         }
 
-        return new CodeGenResult(controllerCodes, definitionCodes, converterCodes, urlBuilderCodes);
+        return new CodeGenResult(controllerResults, definitionCodes, converterCodes, urlBuilderCodes);
     }
 
     private static string GetResourceString(string name)
@@ -279,11 +279,37 @@ public class TypeScriptGenerationContext
         return new StreamReader(resource, Encoding.UTF8).ReadToEnd();
     }
 
+    public static string ExportFunctions(string code)
+    {
+        var lines = code.Split(Environment.NewLine);
+        var exportedLines = lines.Select(line =>
+        {
+            if (line.StartsWith("function "))
+            {
+                return "export " + line;
+            }
+
+            return line;
+        });
+        return string.Join(Environment.NewLine, exportedLines);
+    }
+
     public string Compile(bool generateSwr, bool split)
     {
-        var result = Generate(generateSwr, split);
-
         var builder = new StringBuilder();
+
+        void BeginFile(string name)
+        {
+            if (!split)
+            {
+                return;
+            }
+
+            builder.AppendLine("// __CODEGEN_VERSION_2_FILE_BOUNDARY__ " + name);
+            builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
+        }
+
+        var result = Generate(generateSwr, split);
         var separator = Environment.NewLine + Environment.NewLine;
 
         if (_errorMessages.Any())
@@ -293,23 +319,48 @@ public class TypeScriptGenerationContext
             builder.AppendLine(string.Join(Environment.NewLine, _errorMessages));
         }
 
-        builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
-        builder.AppendLine(GetResourceString(generateSwr
-            ? "CodeGen.Generation.preamble-swr.ts"
-            : "CodeGen.Generation.preamble.ts"));
+        if (!split)
+        {
+            builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
+        }
 
-        builder.AppendLine();
-        builder.AppendLine("// API");
-        builder.AppendLine(string.Join(separator, result.ControllerCodes));
-        builder.AppendLine();
-        builder.AppendLine("// Types");
+        BeginFile("util.ts");
+        builder.AppendLine(GetResourceString("CodeGen.Generation.util.ts"));
+        if (generateSwr)
+        {
+            builder.AppendLine(GetResourceString("CodeGen.Generation.util-swr.ts"));
+        }
+
+        foreach (var controller in result.Controllers)
+        {
+            BeginFile($"_api_{controller.Name}.ts");
+            builder.AppendLine(controller.Script);
+        }
+
+        BeginFile("types.ts");
         builder.AppendLine(string.Join(separator, result.DefinitionCodes));
-        builder.AppendLine();
-        builder.AppendLine("// Converters");
-        builder.AppendLine(string.Join(separator, result.ConverterCodes));
-        builder.AppendLine();
-        builder.AppendLine("// URL builders");
-        builder.AppendLine(string.Join(separator, result.UrlBuilderCodes));
+
+        BeginFile("_converters.ts");
+        if (split)
+        {
+            builder.AppendLine(ExportFunctions(GetResourceString("CodeGen.Generation.primitive-converters.ts")));
+            builder.AppendLine(ExportFunctions(string.Join(separator, result.ConverterCodes)));
+        }
+        else
+        {
+            builder.AppendLine(GetResourceString("CodeGen.Generation.primitive-converters.ts"));
+            builder.AppendLine(string.Join(separator, result.ConverterCodes));
+        }
+
+        BeginFile("_url-builders.ts");
+        if (split)
+        {
+            builder.AppendLine(ExportFunctions(string.Join(separator, result.UrlBuilderCodes)));
+        }
+        else
+        {
+            builder.AppendLine(string.Join(separator, result.UrlBuilderCodes));
+        }
 
         return builder.ToString();
     }

@@ -1,4 +1,4 @@
 namespace CodeGen.Generation;
 
-public record CodeGenResult(ICollection<string> ControllerCodes, ICollection<string> DefinitionCodes,
+public record CodeGenResult(ICollection<CodeGenControllerResult> Controllers, ICollection<string> DefinitionCodes,
     ICollection<string> ConverterCodes, ICollection<string> UrlBuilderCodes);

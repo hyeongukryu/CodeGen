@@ -4,18 +4,27 @@ import { copyToClipboard } from './clipboard';
 function CodeGen() {
   const [code, setCode] = useState<string>();
   const [swr, setSwr] = useState(true);
+  const [split, setSplit] = useState(false);
 
   useEffect(() => {
-    fetch(`code-gen-api${!swr ? '' : '?swr=true'}`)
+    const params = new URLSearchParams();
+    params.append('swr', swr ? 'true' : 'false');
+    params.append('split', split ? 'true' : 'false');
+    fetch('code-gen-api?' + params.toString())
       .then(res => res.json())
       .then(json => setCode(json));
-  }, [swr]);
+  }, [swr, split]);
 
   return <div>
     <div>
       <input id="swr" type="checkbox" checked={swr} onChange={(e) => setSwr(e.target.checked)} />
       <label htmlFor="swr">useSWR React Hook 사용</label>
-      <p style={{ fontSize: '0.9em' }}>Node.js 프로그램처럼 SWR을 사용하기 곤란한 환경에서는 해제할 수 있습니다.</p>
+      <p style={{ fontSize: '12px', marginTop: '4px' }}>Node.js 프로그램처럼 SWR을 사용하기 곤란한 환경에서는 해제할 수 있습니다.</p>
+
+      <input id="split" type="checkbox" checked={split} onChange={(e) => setSplit(e.target.checked)} />
+      <label htmlFor="split">여러 파일로 분리</label>
+      <p style={{ fontSize: '12px', marginTop: '4px' }}>Tree shaking이 잘 되도록 여러 파일로 분리합니다. 새로운 파일이 시작하는 부분이 표시되어 있습니다.</p>
+
       <button onClick={() => copyToClipboard(code)}>복사하기</button>
     </div>
     <hr />

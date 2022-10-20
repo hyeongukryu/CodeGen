@@ -1,13 +1,14 @@
 import _axios, { AxiosRequestConfig as _AxiosRequestConfig, AxiosResponse as _AxiosResponse } from 'axios';
-import _dayjs, { Dayjs as _Dayjs } from 'dayjs';
-import _useSWR, { Middleware as _Middleware, SWRConfiguration, SWRHook as _SWRHook } from 'swr';
 
-let _createHttp: () => _Http = () => _axios.create();
-export function setCreateHttp(createHttp: () => _Http) {
+let _createHttp: () => CodeGenHttp = () => _axios.create();
+export function setCreateHttp(createHttp: () => CodeGenHttp) {
     _createHttp = createHttp;
 }
+export function createHttp(): CodeGenHttp {
+    return _createHttp();
+}
 
-interface _Http {
+export interface CodeGenHttp {
     get<T = any, R = _AxiosResponse<T>>(url: string, config?: _AxiosRequestConfig | undefined): Promise<R>;
     delete<T = any, R = _AxiosResponse<T>>(url: string, config?: _AxiosRequestConfig | undefined): Promise<R>;
     head<T = any, R = _AxiosResponse<T>>(url: string, config?: _AxiosRequestConfig | undefined): Promise<R>;
@@ -19,6 +20,9 @@ interface _Http {
 let _createObject: (obj: any) => any = (obj) => obj;
 export function setCreateObject(createObject: (obj: any) => any) {
     _createObject = createObject;
+}
+export function createObject(obj: any): any {
+    return _createObject(obj);
 }
 
 export const restoreCircularReferences = _restoreCircularReferences;
@@ -55,38 +59,6 @@ function _restoreCircularReferences(obj: any, createObject: (obj: any) => any) {
     return root.obj;
 }
 
-function _convert_string_TO_string(from: string): string {
-    return from;
-}
-
-function _convert_string_TO_number(from: string): number {
-    return Number(from);
-}
-
-function _convert_number_TO_string(from: number): string {
-    return from.toString();
-}
-
-function _convert_string_TO_bigint(from: string): bigint {
-    return BigInt(from);
-}
-
-function _convert_bigint_TO_string(from: bigint): string {
-    return from.toString();
-}
-
-function _convert_boolean_TO_boolean(from: boolean): boolean {
-    return from;
-}
-
-function _convert_string_TO__Dayjs(from: string): _Dayjs {
-    return _dayjs(from);
-}
-
-function _convert__Dayjs_TO_string(from: _Dayjs): string {
-    return from.toISOString();
-}
-
 function _hasOwnPropertyRef(o: any): boolean {
     return o.hasOwnProperty('$ref');
 }
@@ -94,18 +66,3 @@ function _hasOwnPropertyRef(o: any): boolean {
 function _hasOwnPropertyValues(o: any): boolean {
     return o.hasOwnProperty('$values');
 }
-
-function _createSWRMiddleware(_convert: (from: any) => any): _Middleware {
-    return (useSWRNext: _SWRHook) => (key, fetcher, config) => {
-        if (fetcher === null) {
-            return useSWRNext(key, fetcher, config);
-        }
-        const _fetchAndConvert = async (...args: any[]) => {
-            const data: any = await Promise.resolve(fetcher(...args));
-            return _restoreCircularReferences(_convert(data), _createObject);
-        };
-        return useSWRNext(key, _fetchAndConvert, config);
-    };
-}
-
-///
