@@ -129,8 +129,7 @@ public class TypeScriptGenerationContext
         converterMethodNames.Add("_convert__Dayjs_TO_string");
     }
 
-    private (ICollection<string>, ICollection<string>, ICollection<string>, ICollection<string>)
-        Generate(bool generateSwr)
+    private CodeGenResult Generate(bool generateSwr, bool split)
     {
         ICollection<string> converterNames = new List<string>();
         ICollection<string> converterCodes = new List<string>();
@@ -265,12 +264,24 @@ public class TypeScriptGenerationContext
             controllerCodes.Add(builder.ToString());
         }
 
-        return (controllerCodes, definitionCodes, converterCodes, urlBuilderCodes);
+        return new CodeGenResult(controllerCodes, definitionCodes, converterCodes, urlBuilderCodes);
     }
 
-    public string Compile(bool generateSwr)
+    private static string GetResourceString(string name)
     {
-        var (controllerCodes, definitionCodes, converterCodes, urlBuilderCodes) = Generate(generateSwr);
+        var assembly = typeof(TypeScriptGenerationContext).Assembly;
+        var resource = assembly.GetManifestResourceStream(name);
+        if (resource == null)
+        {
+            throw new Exception("Resource not found: " + name);
+        }
+
+        return new StreamReader(resource, Encoding.UTF8).ReadToEnd();
+    }
+
+    public string Compile(bool generateSwr, bool split)
+    {
+        var result = Generate(generateSwr, split);
 
         var builder = new StringBuilder();
         var separator = Environment.NewLine + Environment.NewLine;
@@ -282,28 +293,23 @@ public class TypeScriptGenerationContext
             builder.AppendLine(string.Join(Environment.NewLine, _errorMessages));
         }
 
-        var assembly = typeof(TypeScriptGenerationContext).Assembly;
-        var resource = assembly.GetManifestResourceStream(
-            generateSwr
-                ? "CodeGen.Generation.preamble-swr.ts"
-                : "CodeGen.Generation.preamble.ts");
-        if (resource != null)
-        {
-            builder.AppendLine(new StreamReader(resource, Encoding.UTF8).ReadToEnd());
-        }
+        builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
+        builder.AppendLine(GetResourceString(generateSwr
+            ? "CodeGen.Generation.preamble-swr.ts"
+            : "CodeGen.Generation.preamble.ts"));
 
         builder.AppendLine();
         builder.AppendLine("// API");
-        builder.AppendLine(string.Join(separator, controllerCodes));
+        builder.AppendLine(string.Join(separator, result.ControllerCodes));
         builder.AppendLine();
         builder.AppendLine("// Types");
-        builder.AppendLine(string.Join(separator, definitionCodes));
+        builder.AppendLine(string.Join(separator, result.DefinitionCodes));
         builder.AppendLine();
         builder.AppendLine("// Converters");
-        builder.AppendLine(string.Join(separator, converterCodes));
+        builder.AppendLine(string.Join(separator, result.ConverterCodes));
         builder.AppendLine();
         builder.AppendLine("// URL builders");
-        builder.AppendLine(string.Join(separator, urlBuilderCodes));
+        builder.AppendLine(string.Join(separator, result.UrlBuilderCodes));
 
         return builder.ToString();
     }

@@ -12,6 +12,7 @@
       <EmbeddedResource Include="Generation\preamble.ts" />
       <EmbeddedResource Include="Generation\preamble-swr.ts" />
       <EmbeddedResource Include="Web\index.html" />
+      <EmbeddedResource Include="Generation\header.ts" />
     </ItemGroup>
 
     <ItemGroup>

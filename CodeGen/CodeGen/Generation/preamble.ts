@@ -1,6 +1,3 @@
-/* eslint-disable */
-// auto-generated
-
 import _axios, { AxiosRequestConfig as _AxiosRequestConfig, AxiosResponse as _AxiosResponse } from 'axios';
 import _dayjs, { Dayjs as _Dayjs } from 'dayjs';
 

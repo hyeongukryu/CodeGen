@@ -11,12 +11,18 @@ public class WebRequestHandler
         _apiAnalyzer = apiAnalyzer;
     }
 
+    private static bool GetRequestParam(HttpRequest contextRequest, string name)
+    {
+        return contextRequest.Query.TryGetValue(name, out var values) &&
+               values.Count == 1 && values[0] == "true";
+    }
+
     public Task<string> HandleApiRequest(HttpRequest contextRequest)
     {
         var context = _apiAnalyzer.Analyze();
-        var generateSwr = contextRequest.Query.TryGetValue("swr", out var values) &&
-                          values.Count == 1 && values[0] == "true";
-        var ts = context.Compile(generateSwr);
+        var generateSwr = GetRequestParam(contextRequest, "swr");
+        var split = GetRequestParam(contextRequest, "split");
+        var ts = context.Compile(generateSwr, split);
         return Task.FromResult(ts);
     }
 }
