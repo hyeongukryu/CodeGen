@@ -374,7 +374,8 @@ public class TypeScriptGenerationContext
             return "import { " + string.Join(", ", used) + " } from './_url-builders';";
         }
 
-        foreach (var controller in result.Controllers)
+        var orderedControllers = result.Controllers.OrderBy(c => c.Name).ToList();
+        foreach (var controller in orderedControllers)
         {
             BeginFile($"_{NonCryptographicFileNameMangler.Mangle(controller.Name)}.ts");
             if (split)
@@ -429,7 +430,7 @@ public class TypeScriptGenerationContext
             BeginFile("index.ts");
             builder.AppendLine("export * from './_types';");
             builder.AppendLine("export * from './_util';");
-            foreach (var controller in result.Controllers)
+            foreach (var controller in orderedControllers)
             {
                 builder.AppendLine(
                     $"export * as {controller.Name} from './_{NonCryptographicFileNameMangler.Mangle(controller.Name)}';");
