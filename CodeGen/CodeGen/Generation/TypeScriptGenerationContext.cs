@@ -352,28 +352,43 @@ public class TypeScriptGenerationContext
             builder.AppendLine(GetResourceString("CodeGen.Generation.util-swr.ts"));
         }
 
-        var importAllTypes = "import { " +
-                             string.Join(", ", result.DefinitionNames.Where(d => !PrimitiveTypes.Contains(d))) +
-                             " } from './_types';";
-        var importAllConverters = "import { " + string.Join(", ", result.ConverterNames) + " } from './_converters';";
-        var importAllUrlBuilders =
-            "import { " + string.Join(", ", result.UrlBuilderNames) + " } from './_url-builders';";
+        string ImportTypes(string code)
+        {
+            // False positive 수용
+            var used = result.DefinitionNames.Where(name =>
+                !PrimitiveTypes.Contains(name) && code.Contains(name));
+            return "import { " + string.Join(", ", used) + " } from './_types';";
+        }
+
+        string ImportConverters(string code)
+        {
+            // False positive 수용
+            var used = result.ConverterNames.Where(code.Contains);
+            return "import { " + string.Join(", ", used) + " } from './_converters';";
+        }
+
+        string ImportUrlBuilders(string code)
+        {
+            // False positive 수용
+            var used = result.UrlBuilderNames.Where(code.Contains);
+            return "import { " + string.Join(", ", used) + " } from './_url-builders';";
+        }
 
         foreach (var controller in result.Controllers)
         {
-            BeginFile($"_api_{controller.Name}.ts");
+            BeginFile($"_{NonCryptographicFileNameMangler.Mangle(controller.Name)}.ts");
             if (split)
             {
-                builder.AppendLine(importAllTypes);
-                builder.AppendLine(importAllConverters);
-                builder.AppendLine(importAllUrlBuilders);
-
                 builder.AppendLine("import { _createHttp, _createObject, restoreCircularReferences } from './_util';");
                 if (generateSwr)
                 {
                     builder.AppendLine("import _useSWR, { SWRConfiguration as _SWRConfiguration } from 'swr';");
                     builder.AppendLine("import { _createSWRMiddleware } from './_util';");
                 }
+
+                builder.AppendLine(ImportTypes(controller.Script));
+                builder.AppendLine(ImportConverters(controller.Script));
+                builder.AppendLine(ImportUrlBuilders(controller.Script));
             }
 
             builder.AppendLine(controller.Script);
@@ -383,28 +398,30 @@ public class TypeScriptGenerationContext
         builder.AppendLine(string.Join(separator, result.DefinitionCodes));
 
         BeginFile("_converters.ts");
+        var converterCode = string.Join(separator, result.ConverterCodes);
         if (split)
         {
             builder.AppendLine("import { _hasOwnPropertyRef, _hasOwnPropertyValues } from './_util';");
-            builder.AppendLine(importAllTypes);
+            builder.AppendLine(ImportTypes(converterCode));
             builder.AppendLine(ExportFunctions(GetResourceString("CodeGen.Generation.primitive-converters.ts")));
-            builder.AppendLine(ExportFunctions(string.Join(separator, result.ConverterCodes)));
+            builder.AppendLine(ExportFunctions(converterCode));
         }
         else
         {
             builder.AppendLine(GetResourceString("CodeGen.Generation.primitive-converters.ts"));
-            builder.AppendLine(string.Join(separator, result.ConverterCodes));
+            builder.AppendLine(converterCode);
         }
 
         BeginFile("_url-builders.ts");
+        var urlBuildersCode = string.Join(separator, result.UrlBuilderCodes);
         if (split)
         {
-            builder.AppendLine(importAllConverters);
-            builder.AppendLine(ExportFunctions(string.Join(separator, result.UrlBuilderCodes)));
+            builder.AppendLine(ImportConverters(urlBuildersCode));
+            builder.AppendLine(ExportFunctions(urlBuildersCode));
         }
         else
         {
-            builder.AppendLine(string.Join(separator, result.UrlBuilderCodes));
+            builder.AppendLine(urlBuildersCode);
         }
 
         if (split)
@@ -414,7 +431,8 @@ public class TypeScriptGenerationContext
             builder.AppendLine("export * from './_util';");
             foreach (var controller in result.Controllers)
             {
-                builder.AppendLine($"export * as {controller.Name} from './_api_{controller.Name}';");
+                builder.AppendLine(
+                    $"export * as {controller.Name} from './_{NonCryptographicFileNameMangler.Mangle(controller.Name)}';");
             }
         }
 
