@@ -49,42 +49,40 @@ public static class TypeScriptHelper
 
     public static string GetWebAppTypeName(this CodeGenType type)
     {
-        switch (type.BaseType.FullName)
+        return type.BaseType.FullName switch
         {
-            case "System.String": return "string";
-            case "System.Int16": return "number";
-            case "System.Int32": return "number";
-            case "System.Int64": return "bigint";
-            case "System.Boolean": return "boolean";
-            case "System.Double": return "number";
-            case "System.Single": return "number";
-            case "NodaTime.Instant": return "_Dayjs";
-            case "NodaTime.LocalDate": return "string";
-            case "NodaTime.LocalTime": return "string";
-            case "System.DateTime": return "string";
-            default:
-                return type.BaseType.Name;
-        }
+            "System.String" => "string",
+            "System.Int16" => "number",
+            "System.Int32" => "number",
+            "System.Int64" => "bigint",
+            "System.Boolean" => "boolean",
+            "System.Double" => "number",
+            "System.Single" => "number",
+            "NodaTime.Instant" => "_Dayjs",
+            "NodaTime.LocalDate" => "string",
+            "NodaTime.LocalTime" => "string",
+            "System.DateTime" => "string",
+            _ => type.BaseType.Name
+        };
     }
 
     public static string GetPayloadTypeName(this CodeGenType type)
     {
-        switch (type.BaseType.FullName)
+        return type.BaseType.FullName switch
         {
-            case "System.String": return "string";
-            case "System.Int16": return "string";
-            case "System.Int32": return "string";
-            case "System.Int64": return "string";
-            case "System.Boolean": return "boolean";
-            case "System.Double": return "string";
-            case "System.Single": return "string";
-            case "NodaTime.Instant": return "string";
-            case "NodaTime.LocalDate": return "string";
-            case "NodaTime.LocalTime": return "string";
-            case "System.DateTime": return "string";
-            default:
-                return "_api_" + type.BaseType.Name;
-        }
+            "System.String" => "string",
+            "System.Int16" => "string",
+            "System.Int32" => "string",
+            "System.Int64" => "string",
+            "System.Boolean" => "boolean",
+            "System.Double" => "string",
+            "System.Single" => "string",
+            "NodaTime.Instant" => "string",
+            "NodaTime.LocalDate" => "string",
+            "NodaTime.LocalTime" => "string",
+            "System.DateTime" => "string",
+            _ => "_api_" + type.BaseType.Name
+        };
     }
 
     public static string GetFullWebAppTypeName(this CodeGenType type)

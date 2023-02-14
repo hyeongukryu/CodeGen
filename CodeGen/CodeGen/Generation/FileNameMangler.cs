@@ -17,8 +17,8 @@ public static class NonCryptographicFileNameMangler
                 return Table[name];
             }
 
-            var hash = string.Join("", SHA256.Create().ComputeHash(
-                Encoding.UTF8.GetBytes(name)).Select(b => b.ToString("x2")));
+            var hash = string.Join("", SHA256.HashData(Encoding.UTF8.GetBytes(name))
+                .Select(b => b.ToString("x2")));
 
             for (var length = 1; length <= hash.Length; length++)
             {

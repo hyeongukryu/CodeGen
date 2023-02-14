@@ -25,10 +25,7 @@ app.UseCors(corsPolicyBuilder => corsPolicyBuilder
     .AllowAnyHeader()
     .AllowCredentials());
 
-app.UseEndpoints(endpoints =>
-{
-    endpoints.MapControllers();
-    endpoints.MapCodeGen();
-});
+app.MapControllers();
+app.MapCodeGen();
 
 app.Run();
