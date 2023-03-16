@@ -66,8 +66,8 @@ public class TypeScriptConverterGenerator
         return from as any;
     }}
     if (_hasOwnPropertyValues(from)) {{
-        from = (from as any).$values;
-        const to: {toType} = from.map(element => {elementConverterName}(element));
+        const values: {fromType} = (from as any).$values;
+        const to: {toType} = values.map(element => {elementConverterName}(element));
         return {{ ...from, $values: to }} as any;
     }}
     const to: {toType} = from.map(element => {elementConverterName}(element));
