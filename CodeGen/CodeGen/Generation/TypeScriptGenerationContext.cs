@@ -221,13 +221,15 @@ public class TypeScriptGenerationContext
                     payloadArgument = ", " + payloadType.GetConverterName(true) + $"({action.BodyParameter.Name})";
                 }
 
-                builder.AppendLine($"    const _response = await _createHttp().{action.HttpMethod.ToLower()}" +
+                // TS6133: '_response' is declared but its value is never read.
+                var declareResponseLocalVar = responseType != null ? "const _response = " : "";
+                builder.AppendLine($"    {declareResponseLocalVar}await _createHttp().{action.HttpMethod.ToLower()}" +
                                    $"({urlBuilderName}({urlBuilderArgs}){payloadArgument});");
 
                 if (responseType != null)
                 {
                     builder.AppendLine(
-                        $"    return restoreCircularReferences({responseType.GetConverterName(false)}(_response.data), _createObject);");
+                        $"    return _restoreCircularReferences({responseType.GetConverterName(false)}(_response.data), _createObject);");
                 }
 
                 builder.AppendLine("}" + (split ? "" : ","));
@@ -352,25 +354,28 @@ public class TypeScriptGenerationContext
             builder.AppendLine(GetResourceString("CodeGen.Generation.util-swr.ts"));
         }
 
-        string ImportTypes(string code)
+        ISet<string> GetIdentifiersUsed(string code)
         {
-            // False positive 수용
+            return code.Split(new[] { " ", ",", "[", "]", "|", "(", ")", "<", ">" },
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
+        }
+
+        string ImportTypes(ISet<string> identifiersUsed)
+        {
             var used = result.DefinitionNames.Where(name =>
-                !PrimitiveTypes.Contains(name) && code.Contains(name));
+                !PrimitiveTypes.Contains(name) && identifiersUsed.Contains(name));
             return "import { " + string.Join(", ", used) + " } from './_types';";
         }
 
-        string ImportConverters(string code)
+        string ImportConverters(ISet<string> identifiersUsed)
         {
-            // False positive 수용
-            var used = result.ConverterNames.Where(code.Contains);
+            var used = result.ConverterNames.Where(identifiersUsed.Contains);
             return "import { " + string.Join(", ", used) + " } from './_converters';";
         }
 
-        string ImportUrlBuilders(string code)
+        string ImportUrlBuilders(ISet<string> identifiersUsed)
         {
-            // False positive 수용
-            var used = result.UrlBuilderNames.Where(code.Contains);
+            var used = result.UrlBuilderNames.Where(identifiersUsed.Contains);
             return "import { " + string.Join(", ", used) + " } from './_url-builders';";
         }
 
@@ -380,16 +385,17 @@ public class TypeScriptGenerationContext
             BeginFile($"_{NonCryptographicFileNameMangler.Mangle(controller.Name)}.ts");
             if (split)
             {
-                builder.AppendLine("import { _createHttp, _createObject, restoreCircularReferences } from './_util';");
+                builder.AppendLine("import { _createHttp, _createObject, _restoreCircularReferences } from './_util';");
                 if (generateSwr)
                 {
                     builder.AppendLine("import _useSWR, { SWRConfiguration as _SWRConfiguration } from 'swr';");
                     builder.AppendLine("import { _createSWRMiddleware } from './_util';");
                 }
 
-                builder.AppendLine(ImportTypes(controller.Script));
-                builder.AppendLine(ImportConverters(controller.Script));
-                builder.AppendLine(ImportUrlBuilders(controller.Script));
+                var identifiersUsed = GetIdentifiersUsed(controller.Script);
+                builder.AppendLine(ImportTypes(identifiersUsed));
+                builder.AppendLine(ImportConverters(identifiersUsed));
+                builder.AppendLine(ImportUrlBuilders(identifiersUsed));
             }
 
             builder.AppendLine(controller.Script);
@@ -403,7 +409,7 @@ public class TypeScriptGenerationContext
         if (split)
         {
             builder.AppendLine("import { _hasOwnPropertyRef, _hasOwnPropertyValues } from './_util';");
-            builder.AppendLine(ImportTypes(converterCode));
+            builder.AppendLine(ImportTypes(GetIdentifiersUsed(converterCode)));
             builder.AppendLine(ExportFunctions(GetResourceString("CodeGen.Generation.primitive-converters.ts")));
             builder.AppendLine(ExportFunctions(converterCode));
         }
@@ -417,7 +423,7 @@ public class TypeScriptGenerationContext
         var urlBuildersCode = string.Join(separator, result.UrlBuilderCodes);
         if (split)
         {
-            builder.AppendLine(ImportConverters(urlBuildersCode));
+            builder.AppendLine(ImportConverters(GetIdentifiersUsed(urlBuildersCode)));
             builder.AppendLine(ExportFunctions(urlBuildersCode));
         }
         else

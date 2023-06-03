@@ -20,7 +20,7 @@ export function setCreateObject(createObject: (obj: any) => any) {
 }
 
 export const restoreCircularReferences = _restoreCircularReferences;
-function _restoreCircularReferences(obj: any, createObject: (obj: any) => any) {
+export function _restoreCircularReferences(obj: any, createObject: (obj: any) => any) {
     const root = createObject({ obj });
     const cache = new Map<string, any>();
     const deferred: (() => void)[] = [];
