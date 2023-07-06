@@ -6,15 +6,18 @@ namespace CodeGen.Analysis;
 public class ApiAnalyzer
 {
     private readonly IApiDescriptionGroupCollectionProvider _apiDescriptionGroupCollectionProvider;
+    private readonly IReferenceHandlerConfiguration _referenceHandlerConfiguration;
 
-    public ApiAnalyzer(IApiDescriptionGroupCollectionProvider apiDescriptionGroupCollectionProvider)
+    public ApiAnalyzer(IApiDescriptionGroupCollectionProvider apiDescriptionGroupCollectionProvider,
+        IReferenceHandlerConfiguration referenceHandlerConfiguration)
     {
         _apiDescriptionGroupCollectionProvider = apiDescriptionGroupCollectionProvider;
+        _referenceHandlerConfiguration = referenceHandlerConfiguration;
     }
 
     public TypeScriptGenerationContext Analyze()
     {
-        var context = new TypeScriptGenerationContext();
+        var context = new TypeScriptGenerationContext(_referenceHandlerConfiguration);
 
         foreach (var group in _apiDescriptionGroupCollectionProvider.ApiDescriptionGroups.Items)
         {

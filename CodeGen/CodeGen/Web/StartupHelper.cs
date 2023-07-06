@@ -1,14 +1,24 @@
 using CodeGen.Analysis;
+using CodeGen.Generation;
 
 namespace CodeGen.Web;
 
 public static class StartupHelper
 {
-    public static IServiceCollection AddCodeGen(this IServiceCollection services)
+    public static IServiceCollection AddCodeGen(this IServiceCollection services, bool preserveReferences)
     {
         services.AddEndpointsApiExplorer();
         services.AddScoped<WebRequestHandler>();
         services.AddScoped<ApiAnalyzer>();
+        if (preserveReferences)
+        {
+            services.AddScoped<IReferenceHandlerConfiguration, PreserveReferenceHandlerConfiguration>();
+        }
+        else
+        {
+            services.AddScoped<IReferenceHandlerConfiguration, IgnoreCyclesReferenceHandlerConfiguration>();
+        }
+
         return services;
     }
 

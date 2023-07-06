@@ -12,6 +12,12 @@ public class TypeScriptGenerationContext
 {
     private readonly List<CodeGenController> _controllers = new();
     private readonly List<string> _errorMessages = new();
+    private readonly IReferenceHandlerConfiguration _referenceHandlerConfiguration;
+
+    public TypeScriptGenerationContext(IReferenceHandlerConfiguration referenceHandlerConfiguration)
+    {
+        _referenceHandlerConfiguration = referenceHandlerConfiguration;
+    }
 
     public void AddAction(ApiDescription apiDescription)
     {
@@ -146,7 +152,8 @@ public class TypeScriptGenerationContext
 
         var definitionGenerator =
             new TypeScriptDefinitionGenerator(definitionNames, definitionCodes, definitionFullNames, _errorMessages);
-        var converterGenerator = new TypeScriptConverterGenerator(converterNames, converterCodes, definitionGenerator);
+        var converterGenerator = new TypeScriptConverterGenerator(
+            converterNames, converterCodes, definitionGenerator, _referenceHandlerConfiguration);
 
         foreach (var controller in _controllers)
         {
@@ -286,6 +293,12 @@ public class TypeScriptGenerationContext
             controllerResults.Add(new CodeGenControllerResult(controller.Name, builder.ToString()));
         }
 
+        var dependencyErrors = converterGenerator.CheckDependencyErrors();
+        if (dependencyErrors != null)
+        {
+            _errorMessages.Add(dependencyErrors);
+        }
+
         return new CodeGenResult(controllerResults, definitionCodes, definitionNames,
             converterCodes, converterNames, urlBuilderCodes, urlBuilderNames);
     }
@@ -338,8 +351,10 @@ public class TypeScriptGenerationContext
         if (_errorMessages.Any())
         {
             builder.AppendLine("ERROR");
-            builder.AppendLine();
+            builder.AppendLine("ERROR_BEGIN");
             builder.AppendLine(string.Join(Environment.NewLine, _errorMessages));
+            builder.AppendLine("ERROR_END");
+            builder.AppendLine();
         }
 
         if (!split)
@@ -349,6 +364,10 @@ public class TypeScriptGenerationContext
 
         BeginFile("_util.ts");
         builder.AppendLine(GetResourceString("CodeGen.Generation.util.ts"));
+        builder.AppendLine(_referenceHandlerConfiguration.PreserveReferences
+            ? "export const _restoreCircularReferences = restoreCircularReferences;"
+            : "export const _restoreCircularReferences = (obj: any, _: unknown) => obj;");
+
         if (generateSwr)
         {
             builder.AppendLine(GetResourceString("CodeGen.Generation.util-swr.ts"));

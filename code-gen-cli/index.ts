@@ -24,6 +24,12 @@ async function main() {
         console.error('Failed to get code');
         process.exit(1);
     }
+    if (code.startsWith('ERROR\nERROR_BEGIN\n')) {
+        const errorEnd = code.indexOf('\nERROR_END\n');
+        const error = code.substring('ERROR\nERROR_BEGIN\n'.length, errorEnd);
+        console.error(error);
+        process.exit(1);
+    }
     console.log(code);
 
     await rm('src/api', { recursive: true });

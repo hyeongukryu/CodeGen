@@ -13,7 +13,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.NumberHandling =
             JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString;
     });
-builder.Services.AddCodeGen();
+builder.Services.AddCodeGen(true);
 
 var app = builder.Build();
 

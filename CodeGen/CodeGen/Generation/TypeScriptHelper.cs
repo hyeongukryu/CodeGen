@@ -99,9 +99,9 @@ public static class TypeScriptHelper
                (type.IsNullable ? " | null" : "");
     }
 
-    public static string GetConverterName(this CodeGenType type, bool reverse)
+    public static string GetConverterName(this CodeGenType type, bool convertClientToServer)
     {
-        if (reverse)
+        if (convertClientToServer)
         {
             return $"_convert_{type.GetWebAppTypeName()}_TO_{type.GetPayloadTypeName()}" +
                    (type.IsEnumerable ? "_Array" : "") +

@@ -12,9 +12,9 @@ public static class NonCryptographicFileNameMangler
     {
         lock (Lock)
         {
-            if (Table.ContainsKey(name))
+            if (Table.TryGetValue(name, out var mangle))
             {
-                return Table[name];
+                return mangle;
             }
 
             var hash = string.Join("", SHA256.HashData(Encoding.UTF8.GetBytes(name))

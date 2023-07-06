@@ -8,13 +8,16 @@ public class TypeScriptConverterGenerator
     private readonly ICollection<string> _converterNames;
     private readonly ICollection<string> _converterCodes;
     private readonly TypeScriptDefinitionGenerator _definitionGenerator;
+    private readonly IReferenceHandlerConfiguration _referenceHandlerConfiguration;
+    private readonly IDictionary<string, ISet<string>> _dependencies = new Dictionary<string, ISet<string>>();
 
     public TypeScriptConverterGenerator(ICollection<string> converterNames, ICollection<string> converterCodes,
-        TypeScriptDefinitionGenerator definitionGenerator)
+        TypeScriptDefinitionGenerator definitionGenerator, IReferenceHandlerConfiguration referenceHandlerConfiguration)
     {
         _converterNames = converterNames;
         _converterCodes = converterCodes;
         _definitionGenerator = definitionGenerator;
+        _referenceHandlerConfiguration = referenceHandlerConfiguration;
     }
 
     public void GenerateIfNotExists(CodeGenType type)
@@ -23,9 +26,27 @@ public class TypeScriptConverterGenerator
         DoGenerateIfNotExists(type, false);
     }
 
-    private void DoGenerateIfNotExists(CodeGenType type, bool reverse)
+    private void AddDependency(CodeGenType from, CodeGenType to)
     {
-        var converterName = type.GetConverterName(reverse);
+        if (_referenceHandlerConfiguration.PreserveReferences)
+        {
+            return;
+        }
+
+        _dependencies.AddDependency(from.GetWebAppTypeName(), to.GetWebAppTypeName());
+    }
+
+    public string? CheckDependencyErrors()
+    {
+        var cycle = _dependencies.FindCycleIfAny();
+        return cycle == null
+            ? null
+            : @$"There is a cycle in the dependencies of the generated converters. The cycle starts with {cycle}.";
+    }
+
+    private void DoGenerateIfNotExists(CodeGenType type, bool convertClientToServer)
+    {
+        var converterName = type.GetConverterName(convertClientToServer);
         if (_converterNames.Contains(converterName))
         {
             return;
@@ -36,14 +57,14 @@ public class TypeScriptConverterGenerator
 
         var fullPayloadTypeName = type.GetFullPayloadTypeName();
         var fullWebAppTypeName = type.GetFullWebAppTypeName();
-        var fromType = !reverse ? fullPayloadTypeName : fullWebAppTypeName;
-        var toType = !reverse ? fullWebAppTypeName : fullPayloadTypeName;
+        var fromType = convertClientToServer ? fullWebAppTypeName : fullPayloadTypeName;
+        var toType = convertClientToServer ? fullPayloadTypeName : fullWebAppTypeName;
 
         if (type.IsNullable)
         {
             var nonNullableType = new CodeGenType(type.BaseType, type.IsEnumerable, false);
-            var delegateConverterName = nonNullableType.GetConverterName(reverse);
-            DoGenerateIfNotExists(nonNullableType, reverse);
+            var delegateConverterName = nonNullableType.GetConverterName(convertClientToServer);
+            DoGenerateIfNotExists(nonNullableType, convertClientToServer);
             _converterCodes.Add(
                 @$"function {converterName}(from: {fromType}): {toType} {{
     if (from === null) {{
@@ -57,8 +78,8 @@ public class TypeScriptConverterGenerator
         if (type.IsEnumerable)
         {
             var elementType = new CodeGenType(type.BaseType, false, false);
-            var elementConverterName = elementType.GetConverterName(reverse);
-            DoGenerateIfNotExists(elementType, reverse);
+            var elementConverterName = elementType.GetConverterName(convertClientToServer);
+            DoGenerateIfNotExists(elementType, convertClientToServer);
 
             _converterCodes.Add(
                 @$"function {converterName}(from: {fromType}): {toType} {{
@@ -82,8 +103,9 @@ public class TypeScriptConverterGenerator
                 .Select(property =>
                 {
                     var propertyType = property.ToCodeGenType();
-                    var propertyConvertMethodName = propertyType.GetConverterName(reverse);
-                    DoGenerateIfNotExists(propertyType, reverse);
+                    var propertyConvertMethodName = propertyType.GetConverterName(convertClientToServer);
+                    DoGenerateIfNotExists(propertyType, convertClientToServer);
+                    AddDependency(type, propertyType);
                     var propertyName = property.Name.ToCamelCase();
                     return $"        {propertyName}: {propertyConvertMethodName}(from.{propertyName}),";
                 }));
