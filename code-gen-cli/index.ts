@@ -3,9 +3,11 @@ import { existsSync } from 'fs';
 import { mkdir, rm, writeFile } from 'fs/promises';
 import path from 'path';
 
+const ServerRoot = process.argv[2].replace(/\/$/, '');
+
 async function getCode(): Promise<string | null> {
     try {
-        const res = await axios.get<string>('http://localhost:5000/code-gen-api?swr=true&split=true');
+        const res = await axios.get<string>(ServerRoot + '/code-gen-api?swr=true&split=true');
         const code = res.data;
         return code;
     } catch {
