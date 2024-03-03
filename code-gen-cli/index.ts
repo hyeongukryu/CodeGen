@@ -4,10 +4,17 @@ import { mkdir, rm, writeFile } from 'fs/promises';
 import path from 'path';
 
 const ServerRoot = process.argv[2].replace(/\/$/, '');
+if (!ServerRoot) {
+    console.error('Usage: node update-api.js <server-root>');
+    process.exit(1);
+}
 
-async function getCode(): Promise<string | null> {
+async function getCode(swr: boolean): Promise<string | null> {
     try {
-        const res = await axios.get<string>(ServerRoot + '/code-gen-api?swr=true&split=true');
+        const params = new URLSearchParams();
+        params.append('swr', swr ? 'true' : 'false');
+        params.append('split', 'true');
+        const res = await axios.get<string>(`${ServerRoot}/code-gen-api?${params}`);
         const code = res.data;
         return code;
     } catch {
@@ -15,13 +22,7 @@ async function getCode(): Promise<string | null> {
     return null;
 }
 
-async function main() {
-    if (!existsSync('src/api')) {
-        console.error('src/api directory does not exist');
-        process.exit(1);
-    }
-
-    const code = await getCode();
+function validateCode(code: string | null): asserts code is string {
     if (code === null) {
         console.error('Failed to get code');
         process.exit(1);
@@ -32,10 +33,10 @@ async function main() {
         console.error(error);
         process.exit(1);
     }
-    console.log(code);
+}
 
-    await rm('src/api', { recursive: true });
-    await mkdir('src/api');
+async function generateCode(code: string, codePath: string): Promise<void> {
+    await mkdir(codePath, { recursive: true });
 
     const lines = code.split('\n');
 
@@ -51,7 +52,7 @@ async function main() {
         if (currentFileName === null) {
             return;
         }
-        await writeFile(path.join('src/api', currentFileName), currentFileContent);
+        await writeFile(path.join(codePath, currentFileName), currentFileContent);
         currentFileName = null;
         currentFileContent = '';
     }
@@ -70,5 +71,24 @@ async function main() {
     }
 
     await endFile();
+}
+
+async function main() {
+    if (!existsSync('src/api')) {
+        console.error('src/api directory does not exist');
+        process.exit(1);
+    }
+
+    const clientCode = await getCode(true);
+    validateCode(clientCode);
+    console.log(clientCode);
+
+    const serverCode = await getCode(false);
+    validateCode(serverCode);
+    console.log(serverCode);
+
+    await rm('src/api', { recursive: true });
+    await generateCode(clientCode, 'src/api/client');
+    await generateCode(serverCode, 'src/api/server');
 }
 main();
