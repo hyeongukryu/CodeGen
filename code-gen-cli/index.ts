@@ -9,11 +9,12 @@ if (!ServerRoot) {
     process.exit(1);
 }
 
-async function getCode(swr: boolean): Promise<string | null> {
+async function getCode(swr: boolean, configFilePath: string): Promise<string | null> {
     try {
         const params = new URLSearchParams();
         params.append('swr', swr ? 'true' : 'false');
         params.append('split', 'true');
+        params.append('configFilePath', configFilePath);
         const res = await axios.get<string>(`${ServerRoot}/code-gen-api?${params}`);
         const code = res.data;
         return code;
@@ -79,15 +80,16 @@ async function main() {
         process.exit(1);
     }
 
-    const clientCode = await getCode(true);
+    const clientCode = await getCode(true, '../client.config');
     validateCode(clientCode);
     console.log(clientCode);
 
-    const serverCode = await getCode(false);
+    const serverCode = await getCode(false, '../server.config');
     validateCode(serverCode);
     console.log(serverCode);
 
-    await rm('src/api', { recursive: true });
+    await rm('src/api/client', { recursive: true });
+    await rm('src/api/server', { recursive: true });
     await generateCode(clientCode, 'src/api/client');
     await generateCode(serverCode, 'src/api/server');
 }

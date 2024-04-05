@@ -8,16 +8,10 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 
 namespace CodeGen.Generation;
 
-public class TypeScriptGenerationContext
+public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenceHandlerConfiguration)
 {
-    private readonly List<CodeGenController> _controllers = new();
-    private readonly List<string> _errorMessages = new();
-    private readonly IReferenceHandlerConfiguration _referenceHandlerConfiguration;
-
-    public TypeScriptGenerationContext(IReferenceHandlerConfiguration referenceHandlerConfiguration)
-    {
-        _referenceHandlerConfiguration = referenceHandlerConfiguration;
-    }
+    private readonly List<CodeGenController> _controllers = [];
+    private readonly List<string> _errorMessages = [];
 
     public void AddAction(ApiDescription apiDescription)
     {
@@ -153,7 +147,7 @@ public class TypeScriptGenerationContext
         var definitionGenerator =
             new TypeScriptDefinitionGenerator(definitionNames, definitionCodes, definitionFullNames, _errorMessages);
         var converterGenerator = new TypeScriptConverterGenerator(
-            converterNames, converterCodes, definitionGenerator, _referenceHandlerConfiguration);
+            converterNames, converterCodes, definitionGenerator, referenceHandlerConfiguration);
 
         foreach (var controller in _controllers)
         {
@@ -330,18 +324,18 @@ public class TypeScriptGenerationContext
         return string.Join(Environment.NewLine, exportedLines);
     }
 
-    public string Compile(bool generateSwr, bool split)
+    public string Compile(bool generateSwr, bool split, string configFilePath)
     {
         var builder = new StringBuilder();
 
-        void BeginFile(string name)
+        void BeginFile(string fileName)
         {
             if (!split)
             {
                 return;
             }
 
-            builder.AppendLine("// __CODEGEN_VERSION_2_FILE_BOUNDARY__ " + name);
+            builder.AppendLine("// __CODEGEN_VERSION_2_FILE_BOUNDARY__ " + fileName);
             builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
         }
 
@@ -363,8 +357,9 @@ public class TypeScriptGenerationContext
         }
 
         BeginFile("_util.ts");
+        builder.AppendLine("import _codeGenConfig from '" + configFilePath + "';");
         builder.AppendLine(GetResourceString("CodeGen.Generation.util.ts"));
-        builder.AppendLine(_referenceHandlerConfiguration.PreserveReferences
+        builder.AppendLine(referenceHandlerConfiguration.PreserveReferences
             ? "export const _restoreCircularReferences = restoreCircularReferences;"
             : "export const _restoreCircularReferences = (obj: any, _: unknown) => obj;");
 
