@@ -374,23 +374,29 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
         }
 
+        string ImportAll(IEnumerable<string> imports, string importFilePath)
+        {
+            var lines = imports.Select(i => "    " + i + "," + Environment.NewLine);
+            return "import {" + Environment.NewLine + string.Join("", lines) + "} from '" + importFilePath + "';";
+        }
+
         string ImportTypes(ISet<string> identifiersUsed)
         {
             var used = result.DefinitionNames.Where(name =>
                 !PrimitiveTypes.Contains(name) && identifiersUsed.Contains(name));
-            return "import { " + string.Join(", ", used) + " } from './_types';";
+            return ImportAll(used, "./_types");
         }
 
         string ImportConverters(ISet<string> identifiersUsed)
         {
             var used = result.ConverterNames.Where(identifiersUsed.Contains);
-            return "import { " + string.Join(", ", used) + " } from './_converters';";
+            return ImportAll(used, "./_converters");
         }
 
         string ImportUrlBuilders(ISet<string> identifiersUsed)
         {
             var used = result.UrlBuilderNames.Where(identifiersUsed.Contains);
-            return "import { " + string.Join(", ", used) + " } from './_url-builders';";
+            return ImportAll(used, "./_url-builders");
         }
 
         var orderedControllers = result.Controllers.OrderBy(c => c.Name).ToList();
