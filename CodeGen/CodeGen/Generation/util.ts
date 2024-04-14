@@ -1,4 +1,5 @@
-import _axios, { AxiosRequestConfig as _AxiosRequestConfig, AxiosResponse as _AxiosResponse } from 'axios';
+import _axios from 'axios';
+import type { AxiosRequestConfig as _AxiosRequestConfig, AxiosResponse as _AxiosResponse } from 'axios';
 
 export interface CodeGenConfig {
     createHttp?: CreateHttp;
