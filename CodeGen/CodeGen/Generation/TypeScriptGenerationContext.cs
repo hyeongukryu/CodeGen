@@ -336,7 +336,14 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
             }
 
             builder.AppendLine("// __CODEGEN_VERSION_2_FILE_BOUNDARY__ " + fileName);
-            builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
+            if (generateSwr)
+            {
+                builder.AppendLine(GetResourceString("CodeGen.Generation.header-swr.ts"));
+            }
+            else
+            {
+                builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
+            }
         }
 
         var result = Generate(generateSwr, split);
@@ -353,7 +360,14 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
 
         if (!split)
         {
-            builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
+            if (generateSwr)
+            {
+                builder.AppendLine(GetResourceString("CodeGen.Generation.header-swr.ts"));
+            }
+            else
+            {
+                builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
+            }
         }
 
         BeginFile("_util.ts");
