@@ -14,3 +14,13 @@ ASP.NET Core HTTP API를 사용하는 TypeScript SDK를 자동으로 생성해 �
 * ReferenceHandler.Preserve 형식 처리
 * 웹 인터페이스 또는 명령줄 도구
 * 거대한 단일 파일 또는 Controller별 분리
+
+## 적용 방법
+
+```json
+{
+  "scripts": {
+    "api": "node update-api.js http://localhost:5000/"
+  }
+}
+```
