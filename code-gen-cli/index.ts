@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { existsSync } from 'fs';
 import { mkdir, rm, writeFile } from 'fs/promises';
 import path from 'path';
@@ -15,9 +14,9 @@ async function getCode(swr: boolean, configFilePath: string): Promise<string | n
         params.append('swr', swr ? 'true' : 'false');
         params.append('split', 'true');
         params.append('configFilePath', configFilePath);
-        const res = await axios.get<string>(`${ServerRoot}/code-gen-api?${params}`);
-        const code = res.data;
-        return code;
+        const res = await fetch(`${ServerRoot}/code-gen-api?${params.toString()}`);
+        const code = await res.json();
+        return code as string;
     } catch {
     }
     return null;
@@ -75,8 +74,8 @@ async function generateCode(code: string, codePath: string): Promise<void> {
 }
 
 async function main() {
-    if (!existsSync('src/api')) {
-        console.error('src/api directory does not exist');
+    if (!existsSync('src/api/client') || !existsSync('src/api/server')) {
+        console.error('src/api/client and src/api/server must exist');
         process.exit(1);
     }
 
