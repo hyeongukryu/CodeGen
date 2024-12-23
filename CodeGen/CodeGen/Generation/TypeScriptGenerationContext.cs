@@ -223,7 +223,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 }
 
                 // TS6133: '_response' is declared but its value is never read.
-                var declareResponseLocalVar = responseType != null ? "const _response = " : "";
+                var declareResponseLocalVar = responseType != null ? "const _response: any = " : "";
                 builder.AppendLine($"    {declareResponseLocalVar}await _createHttp().{action.HttpMethod.ToLower()}" +
                                    $"({urlBuilderName}({urlBuilderArgs}){payloadArgument});");
 
