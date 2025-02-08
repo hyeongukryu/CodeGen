@@ -8,6 +8,8 @@ if (!ServerRoot) {
     process.exit(1);
 }
 const Watch = process.env['CODEGEN_CLI_WATCH'] === 'Y';
+const Interval = process.env['CODEGEN_CLI_WATCH_INTERVAL'] ?
+    parseInt(process.env['CODEGEN_CLI_WATCH_INTERVAL']) : 1000;
 
 async function getCode(swr: boolean, configFilePath: string): Promise<string | null> {
     try {
@@ -126,7 +128,7 @@ async function main() {
             }
         }
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, Interval));
     }
 }
 main();

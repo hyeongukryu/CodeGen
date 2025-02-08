@@ -7,7 +7,7 @@ function CodeGenCli() {
   const command = `node update-api.js ${window.location.origin}/`;
   const packageJsonScripts = [
     `"api": "${command}"`,
-    `"api:watch": "CODEGEN_CLI_WATCH=Y ${command}"`,
+    `"api:watch": "CODEGEN_CLI_WATCH=Y CODEGEN_CLI_WATCH_INTERVAL=2000 ${command}"`,
   ].join(',\n    ');
 
   return <div>
