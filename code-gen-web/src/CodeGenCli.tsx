@@ -2,9 +2,13 @@ import { copyToClipboard } from './clipboard';
 import CliScript from './bundle.js?raw';
 
 function CodeGenCli() {
-  const PackageJsonPrefix = `{\n  "scripts": {\n    `;
-  const PackageJsonPostfix = `\n  }\n}`;
-  const PackageJson = `"api": "node update-api.js ${window.location.origin}/"`;
+  const PackageJsonScriptsPrefix = `{\n  "scripts": {\n    `;
+  const PackageJsonScriptsPostfix = `\n  }\n}`;
+  const command = `node update-api.js ${window.location.origin}/`;
+  const packageJsonScripts = [
+    `"api": "${command}"`,
+    `"api:watch": "CODEGEN_CLI_WATCH=Y ${command}"`,
+  ].join(',\n    ');
 
   return <div>
     <div className="mb-8">
@@ -13,16 +17,16 @@ function CodeGenCli() {
         <span className='font-mono text-base'>package.json</span>
       </h2>
       <button className="px-4 py-2 mb-4 font-bold text-white bg-blue-500 rounded hover:bg-blue-700"
-        onClick={() => copyToClipboard(PackageJson)}>복사하기</button>
+        onClick={() => copyToClipboard(packageJsonScripts)}>복사하기</button>
       <div className="p-2 font-mono leading-snug text-gray-700 break-all whitespace-pre border border-gray-300 rounded">
         <span className='text-gray-400'>
-          {PackageJsonPrefix}
+          {PackageJsonScriptsPrefix}
         </span>
         <span className='font-bold text-blue-500'>
-          {PackageJson}
+          {packageJsonScripts}
         </span>
         <span className='text-gray-400'>
-          {PackageJsonPostfix}
+          {PackageJsonScriptsPostfix}
         </span>
       </div>
     </div>

@@ -7,6 +7,7 @@ if (!ServerRoot) {
     console.error('Usage: node update-api.js <server-root>');
     process.exit(1);
 }
+const Watch = process.env['CODEGEN_CLI_WATCH'] === 'Y';
 
 async function getCode(swr: boolean, configFilePath: string): Promise<string | null> {
     try {
@@ -24,35 +25,38 @@ async function getCode(swr: boolean, configFilePath: string): Promise<string | n
 
 function validateCode(code: string | null): asserts code is string {
     if (code === null) {
-        console.error('Failed to get code');
-        process.exit(1);
+        throw new Error('Failed to get code');
     }
     if (code.startsWith('ERROR\nERROR_BEGIN\n')) {
         const errorEnd = code.indexOf('\nERROR_END\n');
         const error = code.substring('ERROR\nERROR_BEGIN\n'.length, errorEnd);
-        console.error(error);
-        process.exit(1);
+        throw new Error(error);
     }
 }
 
-async function generateCode(code: string, codePath: string): Promise<void> {
-    await mkdir(codePath, { recursive: true });
+interface WriteFileRequest {
+    fileName: string;
+    content: string;
+}
 
+function splitCode(code: string): WriteFileRequest[] {
     const lines = code.split('\n');
 
     let currentFileName: string | null = null;
     let currentFileContent: string = '';
 
-    async function beginFile(name: string) {
-        await endFile();
+    const files: WriteFileRequest[] = [];
+
+    function beginFile(name: string) {
+        endFile();
         currentFileName = name;
     }
 
-    async function endFile() {
+    function endFile() {
         if (currentFileName === null) {
             return;
         }
-        await writeFile(path.join(codePath, currentFileName), currentFileContent);
+        files.push({ fileName: currentFileName, content: currentFileContent });
         currentFileName = null;
         currentFileContent = '';
     }
@@ -60,36 +64,69 @@ async function generateCode(code: string, codePath: string): Promise<void> {
     for (const line of lines) {
         if (line.startsWith('// __CODEGEN_VERSION_2_FILE_BOUNDARY__ ')) {
             const fileName = line.split(' ')[2];
-            await beginFile(fileName);
+            beginFile(fileName);
             continue;
         }
         if (currentFileName === null) {
-            console.error('Unexpected line outside of file boundary');
-            process.exit(1);
+            throw new Error('Unexpected line outside of file boundary');
         }
         currentFileContent += line + '\n';
     }
 
-    await endFile();
+    endFile();
+    return files;
+}
+
+async function writeFiles(files: WriteFileRequest[], codePath: string): Promise<void> {
+    await mkdir(codePath, { recursive: true });
+
+    for (const file of files) {
+        const filePath = path.join(codePath, file.fileName);
+        await writeFile(filePath, file.content);
+    }
 }
 
 async function main() {
-    if (!existsSync('src/api/client') || !existsSync('src/api/server')) {
+    const ClientRoot = 'src/api/client';
+    const ServerRoot = 'src/api/server';
+
+    if (!existsSync(ClientRoot) || !existsSync(ServerRoot)) {
         console.error('src/api/client and src/api/server must exist');
         process.exit(1);
     }
 
-    const clientCode = await getCode(true, '../client.config');
-    validateCode(clientCode);
-    console.log(clientCode);
+    let prevClientCode: string | null = null;
+    let prevServerCode: string | null = null;
 
-    const serverCode = await getCode(false, '../server.config');
-    validateCode(serverCode);
-    console.log(serverCode);
+    for (; ;) {
+        try {
+            const clientCode = await getCode(true, '../client.config');
+            validateCode(clientCode);
+            const serverCode = await getCode(false, '../server.config');
+            validateCode(serverCode);
 
-    await rm('src/api/client', { recursive: true });
-    await rm('src/api/server', { recursive: true });
-    await generateCode(clientCode, 'src/api/client');
-    await generateCode(serverCode, 'src/api/server');
+            if (prevClientCode !== clientCode || prevServerCode !== serverCode) {
+                const clientFiles = splitCode(clientCode);
+                const serverFiles = splitCode(serverCode);
+
+                await rm('src/api/client', { recursive: true });
+                await rm('src/api/server', { recursive: true });
+
+                await writeFiles(clientFiles, ClientRoot);
+                await writeFiles(serverFiles, ServerRoot);
+            }
+
+            if (!Watch) {
+                break;
+            }
+        } catch (e) {
+            console.error(e);
+            if (!Watch) {
+                process.exit(1);
+            }
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
 }
 main();
