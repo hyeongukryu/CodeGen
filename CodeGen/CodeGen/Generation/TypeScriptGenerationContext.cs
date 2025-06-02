@@ -212,9 +212,11 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
 
                 var urlBuilderName = action.GetUrlName();
                 var responseTypeName = responseType == null ? "void" : responseType.GetFullWebAppTypeName();
+                var parametersWithAxiosRequestConfig = actionParameters
+                    .Concat(["_axiosRequestConfig?: _AxiosRequestConfig"]);
                 builder.AppendLine(
                     (split ? "export async function" : "async") +
-                    $" {actionName}({string.Join(", ", actionParameters)}): Promise<{responseTypeName}> {{");
+                    $" {actionName}({string.Join(", ", parametersWithAxiosRequestConfig)}): Promise<{responseTypeName}> {{");
 
                 var payloadArgument = "";
                 if (payloadType != null && action.BodyParameter != null)
@@ -225,7 +227,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 // TS6133: '_response' is declared but its value is never read.
                 var declareResponseLocalVar = responseType != null ? "const _response: any = " : "";
                 builder.AppendLine($"    {declareResponseLocalVar}await _createHttp().{action.HttpMethod.ToLower()}" +
-                                   $"({urlBuilderName}({urlBuilderArgs}){payloadArgument});");
+                                   $"({urlBuilderName}({urlBuilderArgs}){payloadArgument}, _axiosRequestConfig);");
 
                 if (responseType != null)
                 {
@@ -420,6 +422,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
             if (split)
             {
                 builder.AppendLine("import { _createHttp, _createObject, _restoreCircularReferences } from './_util';");
+                builder.AppendLine("import type { AxiosRequestConfig as _AxiosRequestConfig } from 'axios';");
                 if (generateSwr)
                 {
                     builder.AppendLine("import _useSWR, { SWRConfiguration as _SWRConfiguration } from 'swr';");
