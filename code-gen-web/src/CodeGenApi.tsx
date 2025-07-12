@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { copyToClipboard } from './clipboard';
+import { CodeGenConfig } from './types';
 
-function CodeGenApi() {
+function CodeGenApi(props: { config: CodeGenConfig }) {
   const [code, setCode] = useState<string>();
   const [swr, setSwr] = useState(true);
   const [split, setSplit] = useState(false);
   const [configFilePath, setConfigFilePath] = useState('./api.config');
+  const [tag, setTag] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -13,14 +15,31 @@ function CodeGenApi() {
       params.append('swr', swr ? 'true' : 'false');
       params.append('split', split ? 'true' : 'false');
       params.append('configFilePath', configFilePath);
+      if (tag !== 0) {
+        params.append('tag', props.config.tags[tag - 1]);
+      }
 
-      const res = await fetch('code-gen-api?' + params.toString());
+      const res = await fetch('http://localhost:5000/code-gen-api?' + params.toString());
       setCode(await res.json());
     })();
-  }, [swr, split, configFilePath]);
+  }, [swr, split, configFilePath, tag]);
 
   return <div>
     <div>
+      <div className='mb-2'>
+        <label htmlFor="tag" className='mr-2'>태그</label>
+        <select className='p-1 mb-1 text-sm border border-gray-300 rounded' id="tag"
+          value={tag} onChange={(e) => setTag(parseInt(e.target.value))}>
+          <option value="0">모든 태그</option>
+          {props.config.tags.map((t, i) => (
+            <option key={i} value={i + 1}>{t}</option>
+          ))}
+        </select>
+        <p className='text-xs text-gray-600'>
+          Microsoft.AspNetCore.Http.TagsAttribute로 태그 목록을 지정하고, 태그별로 조회할 수 있습니다.
+        </p>
+      </div>
+
       <div className='mb-2'>
         <input className='mr-2'
           id="swr" type="checkbox" checked={swr} onChange={(e) => setSwr(e.target.checked)} />

@@ -92,11 +92,26 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
             }
         }
 
+        var tagsAttribute = api.MethodInfo.GetCustomAttribute(typeof(TagsAttribute)) as TagsAttribute;
+        var tags = tagsAttribute?.Tags ?? [];
+
         controller.Actions.Add(new CodeGenAction(controller, api.ActionName,
             api.AttributeRouteInfo.Template,
             HttpMethods.GetCanonicalizedValue(httpMethodActionConstraint.HttpMethods.First()),
             bodyParameters.FirstOrDefault(),
-            pathParameters.ToList(), queryParameters.ToList(), responseType, responseType == null));
+            pathParameters.ToList(), queryParameters.ToList(), responseType,
+            responseType == null, tags
+        ));
+    }
+
+    public IEnumerable<string> GetTags()
+    {
+        var tags = from controller in _controllers
+            from action in controller.Actions
+            from tag in action.Tags
+            select tag;
+
+        return tags.Distinct().OrderBy(t => t);
     }
 
     private CodeGenController EnsureControllerExists(string controllerName)
@@ -131,7 +146,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
         converterMethodNames.Add("_convert__Dayjs_TO_string");
     }
 
-    private CodeGenResult Generate(bool generateSwr, bool split)
+    private CodeGenResult Generate(bool generateSwr, bool split, string? tag)
     {
         ICollection<string> converterNames = new List<string>();
         ICollection<string> converterCodes = new List<string>();
@@ -151,6 +166,12 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
 
         foreach (var controller in _controllers)
         {
+            if (tag != null && !controller.Actions.Any(a => a.Tags.Contains(tag)))
+            {
+                // 태그 필터
+                continue;
+            }
+
             var builder = new StringBuilder();
             if (!split)
             {
@@ -159,6 +180,12 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
 
             foreach (var action in controller.Actions)
             {
+                if (tag != null && !action.Tags.Contains(tag))
+                {
+                    // 태그 필터
+                    continue;
+                }
+
                 CodeGenType? responseType = null;
                 if (action.ResponseType != null)
                 {
@@ -326,7 +353,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
         return string.Join(Environment.NewLine, exportedLines);
     }
 
-    public string Compile(bool generateSwr, bool split, string configFilePath)
+    public string Compile(bool generateSwr, bool split, string configFilePath, string? tag)
     {
         var builder = new StringBuilder();
 
@@ -348,7 +375,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
             }
         }
 
-        var result = Generate(generateSwr, split);
+        var result = Generate(generateSwr, split, tag);
         var separator = Environment.NewLine + Environment.NewLine;
 
         if (_errorMessages.Any())

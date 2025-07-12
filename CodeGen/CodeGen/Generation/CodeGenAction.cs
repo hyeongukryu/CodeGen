@@ -6,7 +6,8 @@ public class CodeGenAction
 {
     public CodeGenAction(CodeGenController controller, string name, string template, string httpMethod,
         ControllerParameterDescriptor? bodyParameter, IEnumerable<ControllerParameterDescriptor> pathParameters,
-        IEnumerable<ControllerParameterDescriptor> queryParameters, Type? responseType, bool isCommand)
+        IEnumerable<ControllerParameterDescriptor> queryParameters, Type? responseType, bool isCommand,
+        IEnumerable<string> tags)
     {
         Controller = controller;
         Name = name;
@@ -17,6 +18,7 @@ public class CodeGenAction
         QueryParameters = queryParameters;
         ResponseType = responseType;
         IsCommand = isCommand;
+        Tags = tags;
     }
 
     public CodeGenController Controller { get; }
@@ -28,4 +30,5 @@ public class CodeGenAction
     public IEnumerable<ControllerParameterDescriptor> QueryParameters { get; }
     public Type? ResponseType { get; }
     public bool IsCommand { get; }
+    public IEnumerable<string> Tags { get; }
 }

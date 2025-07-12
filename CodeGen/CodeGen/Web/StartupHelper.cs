@@ -46,5 +46,13 @@ public static class StartupHelper
             var response = await handler.HandleApiRequest(context.Request);
             await context.Response.WriteAsJsonAsync(response);
         }).AllowAnonymous();
+
+        endpoints.MapGet("code-gen-config", async context =>
+        {
+            await using var scope = endpoints.ServiceProvider.CreateAsyncScope();
+            var handler = scope.ServiceProvider.GetRequiredService<WebRequestHandler>();
+            var response = await handler.HandleConfigRequest(context.Request);
+            await context.Response.WriteAsJsonAsync(response);
+        }).AllowAnonymous();
     }
 }

@@ -54,4 +54,18 @@ public class OrganizationsController : ControllerBase
         builder.AppendLine(request.D.ToUnixTimeMilliseconds().ToString());
         return Ok(new EchoResponse(builder.ToString()));
     }
+
+    [HttpGet]
+    [Tags("TagA")]
+    public string TagA()
+    {
+        return "TagA";
+    }
+
+    [HttpGet]
+    [Tags("TagA", "TagB")]
+    public string TagATagB()
+    {
+        return "TagATagB";
+    }
 }

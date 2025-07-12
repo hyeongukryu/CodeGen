@@ -22,13 +22,37 @@ public class WebRequestHandler(ApiAnalyzer apiAnalyzer)
         return value;
     }
 
+    private static string? GetStringRequestParamOptional(HttpRequest contextRequest, string name)
+    {
+        var ok = contextRequest.Query.TryGetValue(name, out var values);
+        var value = values.FirstOrDefault();
+        if (!ok || value == null)
+        {
+            return null;
+        }
+
+        return value;
+    }
+
     public Task<string> HandleApiRequest(HttpRequest contextRequest)
     {
         var context = apiAnalyzer.Analyze();
         var generateSwr = GetBoolRequestParam(contextRequest, "swr");
         var split = GetBoolRequestParam(contextRequest, "split");
         var configFilePath = GetStringRequestParam(contextRequest, "configFilePath");
-        var ts = context.Compile(generateSwr, split, configFilePath);
+        var tag = GetStringRequestParamOptional(contextRequest, "tag");
+        var ts = context.Compile(generateSwr, split, configFilePath, tag);
         return Task.FromResult(ts);
+    }
+
+    public Task<CodeGenConfig> HandleConfigRequest(HttpRequest contextRequest)
+    {
+        var context = apiAnalyzer.Analyze();
+        var tags = context.GetTags();
+        var config = new CodeGenConfig
+        {
+            Tags = tags
+        };
+        return Task.FromResult(config);
     }
 }
