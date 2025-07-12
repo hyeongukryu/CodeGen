@@ -37,12 +37,25 @@ public class WebRequestHandler(ApiAnalyzer apiAnalyzer)
     public Task<string> HandleApiRequest(HttpRequest contextRequest)
     {
         var context = apiAnalyzer.Analyze();
-        var generateSwr = GetBoolRequestParam(contextRequest, "swr");
-        var split = GetBoolRequestParam(contextRequest, "split");
-        var configFilePath = GetStringRequestParam(contextRequest, "configFilePath");
+
         var tag = GetStringRequestParamOptional(contextRequest, "tag");
-        var ts = context.Compile(generateSwr, split, configFilePath, tag);
-        return Task.FromResult(ts);
+        var format = GetStringRequestParam(contextRequest, "format");
+
+        if (format == "typescript-api")
+        {
+            var generateSwr = GetBoolRequestParam(contextRequest, "swr");
+            var split = GetBoolRequestParam(contextRequest, "split");
+            var configFilePath = GetStringRequestParam(contextRequest, "configFilePath");
+            var ts = context.Compile(generateSwr, split, configFilePath, tag);
+            return Task.FromResult(ts);
+        }
+
+        if (format == "openapi-json")
+        {
+            return Task.FromResult("{}");
+        }
+
+        throw new ArgumentException($"Unsupported format {format}");
     }
 
     public Task<CodeGenConfig> HandleConfigRequest(HttpRequest contextRequest)

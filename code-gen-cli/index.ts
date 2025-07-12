@@ -14,6 +14,7 @@ const Interval = process.env['CODEGEN_CLI_WATCH_INTERVAL'] ?
 async function getCode(swr: boolean, configFilePath: string): Promise<string | null> {
     try {
         const params = new URLSearchParams();
+        params.append('format', 'typescript-api');
         params.append('swr', swr ? 'true' : 'false');
         params.append('split', 'true');
         params.append('configFilePath', configFilePath);
