@@ -1,1 +1,1 @@
-export const ServerRoot = '';
+export const ServerRoot = '/';

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
+import Usage from './Usage';
 import CodeGenApi from './CodeGenApi';
 import CodeGenCli from './CodeGenCli';
-import OpenApiJson from './OpenApiJson';
 import { CodeGenConfig } from './types';
 import { ServerRoot } from './config';
 
 function App() {
-  const [currentTab, setCurrentTab] = useState<'typescript-api' | 'cli' | 'openapi-json'>('typescript-api');
+  const [currentTab, setCurrentTab] = useState<'usage' | 'typescript-api' | 'cli'>('usage');
 
   const [config, setConfig] = useState<CodeGenConfig | null>();
   useEffect(() => {
@@ -34,19 +34,19 @@ function App() {
 
   return <div className='p-4'>
     <div className='flex gap-2'>
+      <button className="w-24 text-lg border-b-2 border-transparent aria-expanded:border-blue-500 aria-expanded:font-bold"
+        aria-expanded={currentTab === 'usage'}
+        onClick={() => setCurrentTab('usage')}>사용 방법</button>
       <button className="w-40 text-lg border-b-2 border-transparent aria-expanded:border-blue-500 aria-expanded:font-bold"
         aria-expanded={currentTab === 'typescript-api'}
         onClick={() => setCurrentTab('typescript-api')}>TypeScript API</button>
-      <button className="w-40 text-lg border-b-2 border-transparent aria-expanded:border-blue-500 aria-expanded:font-bold"
-        aria-expanded={currentTab === 'openapi-json'}
-        onClick={() => setCurrentTab('openapi-json')}>OpenAPI JSON</button>
       <button className="w-16 text-lg border-b-2 border-transparent aria-expanded:border-blue-500 aria-expanded:font-bold"
         aria-expanded={currentTab === 'cli'}
         onClick={() => setCurrentTab('cli')}>CLI</button>
     </div>
     <div className='mt-4'>
-      {currentTab === 'typescript-api' ? <CodeGenApi config={config} /> :
-        currentTab === 'openapi-json' ? <OpenApiJson config={config} /> : <CodeGenCli />}
+      {currentTab === 'usage' ? <Usage /> :
+        currentTab === 'typescript-api' ? <CodeGenApi config={config} /> : <CodeGenCli />}
     </div>
   </div>
 }

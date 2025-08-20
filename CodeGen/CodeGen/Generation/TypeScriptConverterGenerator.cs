@@ -9,15 +9,18 @@ public class TypeScriptConverterGenerator
     private readonly ICollection<string> _converterCodes;
     private readonly TypeScriptDefinitionGenerator _definitionGenerator;
     private readonly IReferenceHandlerConfiguration _referenceHandlerConfiguration;
+    private readonly TypeScriptNameResolver _typeNameResolver;
     private readonly IDictionary<string, ISet<string>> _dependencies = new Dictionary<string, ISet<string>>();
 
     public TypeScriptConverterGenerator(ICollection<string> converterNames, ICollection<string> converterCodes,
-        TypeScriptDefinitionGenerator definitionGenerator, IReferenceHandlerConfiguration referenceHandlerConfiguration)
+        TypeScriptDefinitionGenerator definitionGenerator, IReferenceHandlerConfiguration referenceHandlerConfiguration,
+        TypeScriptNameResolver typeNameResolver)
     {
         _converterNames = converterNames;
         _converterCodes = converterCodes;
         _definitionGenerator = definitionGenerator;
         _referenceHandlerConfiguration = referenceHandlerConfiguration;
+        _typeNameResolver = typeNameResolver;
     }
 
     public void GenerateIfNotExists(CodeGenType type)
@@ -33,7 +36,7 @@ public class TypeScriptConverterGenerator
             return;
         }
 
-        _dependencies.AddDependency(from.GetWebAppTypeName(), to.GetWebAppTypeName());
+        _dependencies.AddDependency(_typeNameResolver.GetWebAppTypeName(from), _typeNameResolver.GetWebAppTypeName(to));
     }
 
     public string? CheckDependencyErrors()
@@ -46,7 +49,7 @@ public class TypeScriptConverterGenerator
 
     private void DoGenerateIfNotExists(CodeGenType type, bool convertClientToServer)
     {
-        var converterName = type.GetConverterName(convertClientToServer);
+        var converterName = _typeNameResolver.GetConverterName(type, convertClientToServer);
         if (_converterNames.Contains(converterName))
         {
             return;
@@ -55,15 +58,15 @@ public class TypeScriptConverterGenerator
         _converterNames.Add(converterName);
         _definitionGenerator.GenerateIfNotExists(type);
 
-        var fullPayloadTypeName = type.GetFullPayloadTypeName();
-        var fullWebAppTypeName = type.GetFullWebAppTypeName();
+        var fullPayloadTypeName = _typeNameResolver.GetFullPayloadTypeName(type);
+        var fullWebAppTypeName = _typeNameResolver.GetFullWebAppTypeName(type);
         var fromType = convertClientToServer ? fullWebAppTypeName : fullPayloadTypeName;
         var toType = convertClientToServer ? fullPayloadTypeName : fullWebAppTypeName;
 
         if (type.IsNullable)
         {
             var nonNullableType = new CodeGenType(type.BaseType, type.IsEnumerable, false);
-            var delegateConverterName = nonNullableType.GetConverterName(convertClientToServer);
+            var delegateConverterName = _typeNameResolver.GetConverterName(nonNullableType, convertClientToServer);
             DoGenerateIfNotExists(nonNullableType, convertClientToServer);
             _converterCodes.Add(
                 @$"function {converterName}(from: {fromType}): {toType} {{
@@ -78,7 +81,7 @@ public class TypeScriptConverterGenerator
         if (type.IsEnumerable)
         {
             var elementType = new CodeGenType(type.BaseType, false, false);
-            var elementConverterName = elementType.GetConverterName(convertClientToServer);
+            var elementConverterName = _typeNameResolver.GetConverterName(elementType, convertClientToServer);
             DoGenerateIfNotExists(elementType, convertClientToServer);
 
             _converterCodes.Add(
@@ -103,7 +106,7 @@ public class TypeScriptConverterGenerator
                 .Select(property =>
                 {
                     var propertyType = property.ToCodeGenType();
-                    var propertyConvertMethodName = propertyType.GetConverterName(convertClientToServer);
+                    var propertyConvertMethodName = _typeNameResolver.GetConverterName(propertyType, convertClientToServer);
                     DoGenerateIfNotExists(propertyType, convertClientToServer);
                     AddDependency(type, propertyType);
                     var propertyName = property.Name.ToCamelCase();

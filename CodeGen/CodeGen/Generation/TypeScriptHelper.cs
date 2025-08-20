@@ -8,6 +8,11 @@ public static class TypeScriptHelper
 {
     public static CodeGenType ToCodeGenType(this PropertyInfo propertyInfo)
     {
+        if (KnownCodeGenTypes.IsBuiltIn(propertyInfo.PropertyType))
+        {
+            return new CodeGenType(propertyInfo.PropertyType, false, propertyInfo.IsNullable());
+        }
+
         if (propertyInfo.PropertyType.IsEnumerable())
         {
             return new CodeGenType(propertyInfo.PropertyType.GetEnumerableElementType()!, true,
@@ -21,6 +26,11 @@ public static class TypeScriptHelper
 
     public static CodeGenType ToCodeGenType(this ParameterInfo parameterInfo)
     {
+        if (KnownCodeGenTypes.IsBuiltIn(parameterInfo.ParameterType))
+        {
+            return new CodeGenType(parameterInfo.ParameterType, false, parameterInfo.IsNullable());
+        }
+
         if (parameterInfo.ParameterType.IsEnumerable())
         {
             return new CodeGenType(parameterInfo.ParameterType.GetEnumerableElementType()!, true,
@@ -34,6 +44,11 @@ public static class TypeScriptHelper
 
     public static CodeGenType ToCodeGenType(this Type type)
     {
+        if (KnownCodeGenTypes.IsBuiltIn(type))
+        {
+            return new CodeGenType(type, false, false);
+        }
+
         if (type.IsEnumerable())
         {
             return new CodeGenType(type.GetEnumerableElementType()!, true, false);
@@ -45,76 +60,6 @@ public static class TypeScriptHelper
         }
 
         return new CodeGenType(type, false, false);
-    }
-
-    public static string GetWebAppTypeName(this CodeGenType type)
-    {
-        return type.BaseType.FullName switch
-        {
-            "System.String" => "string",
-            "System.Int16" => "number",
-            "System.Int32" => "number",
-            "System.Int64" => "bigint",
-            "System.Boolean" => "boolean",
-            "System.Double" => "number",
-            "System.Single" => "number",
-            "NodaTime.Instant" => "_Dayjs",
-            "NodaTime.LocalDate" => "string",
-            "NodaTime.LocalTime" => "string",
-            "NodaTime.LocalDateTime" => "string",
-            "System.DateTime" => "string",
-            "System.Decimal" => "number",
-            _ => type.BaseType.Name
-        };
-    }
-
-    public static string GetPayloadTypeName(this CodeGenType type)
-    {
-        return type.BaseType.FullName switch
-        {
-            "System.String" => "string",
-            "System.Int16" => "string",
-            "System.Int32" => "string",
-            "System.Int64" => "string",
-            "System.Boolean" => "boolean",
-            "System.Double" => "string",
-            "System.Single" => "string",
-            "NodaTime.Instant" => "string",
-            "NodaTime.LocalDate" => "string",
-            "NodaTime.LocalTime" => "string",
-            "NodaTime.LocalDateTime" => "string",
-            "System.DateTime" => "string",
-            "System.Decimal" => "string",
-            _ => "_api_" + type.BaseType.Name
-        };
-    }
-
-    public static string GetFullWebAppTypeName(this CodeGenType type)
-    {
-        return type.GetWebAppTypeName() +
-               (type.IsEnumerable ? "[]" : "") +
-               (type.IsNullable ? " | null" : "");
-    }
-
-    public static string GetFullPayloadTypeName(this CodeGenType type)
-    {
-        return type.GetPayloadTypeName() +
-               (type.IsEnumerable ? "[]" : "") +
-               (type.IsNullable ? " | null" : "");
-    }
-
-    public static string GetConverterName(this CodeGenType type, bool convertClientToServer)
-    {
-        if (convertClientToServer)
-        {
-            return $"_convert_{type.GetWebAppTypeName()}_TO_{type.GetPayloadTypeName()}" +
-                   (type.IsEnumerable ? "_Array" : "") +
-                   (type.IsNullable ? "_Nullable" : "");
-        }
-
-        return $"_convert_{type.GetPayloadTypeName()}_TO_{type.GetWebAppTypeName()}" +
-               (type.IsEnumerable ? "_Array" : "") +
-               (type.IsNullable ? "_Nullable" : "");
     }
 
     public static string ToCamelCase(this string name)
@@ -130,6 +75,6 @@ public static class TypeScriptHelper
 
     public static string GetUrlName(this CodeGenAction action)
     {
-        return $"_{action.Controller.Name}_{action.HttpMethod}_{action.Name}_url";
+        return $"_{action.Controller.GeneratedName}_{action.HttpMethod}_{action.Name}_url";
     }
 }

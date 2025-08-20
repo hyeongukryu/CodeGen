@@ -1,15 +1,18 @@
 using CodeGen.Generation;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.Extensions.Options;
 
 namespace CodeGen.Analysis;
 
 public class ApiAnalyzer(
     IApiDescriptionGroupCollectionProvider apiDescriptionGroupCollectionProvider,
-    IReferenceHandlerConfiguration referenceHandlerConfiguration)
+    IReferenceHandlerConfiguration referenceHandlerConfiguration,
+    IOptions<JsonOptions> jsonOptions)
 {
-    public TypeScriptGenerationContext Analyze()
+    public CodeGenGenerationContext Analyze()
     {
-        var context = new TypeScriptGenerationContext(referenceHandlerConfiguration);
+        var context = new CodeGenGenerationContext(referenceHandlerConfiguration, jsonOptions.Value.JsonSerializerOptions);
 
         foreach (var group in apiDescriptionGroupCollectionProvider.ApiDescriptionGroups.Items)
         {

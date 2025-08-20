@@ -9,19 +9,12 @@
 
     <ItemGroup>
       <None Remove="Web\index.html" />
-      <EmbeddedResource Include="Generation\header-swr.ts" />
-      <EmbeddedResource Include="Generation\util.ts" />
-      <EmbeddedResource Include="Generation\util-swr.ts" />
+      <EmbeddedResource Include="Generation\TypeScriptTemplates\*.ts" />
       <EmbeddedResource Include="Web\index.html" />
-      <EmbeddedResource Include="Generation\header.ts" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="NodaTime" Version="3.2.2" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <EmbeddedResource Include="Generation\primitive-converters.ts" />
+      <PackageReference Include="NodaTime" Version="3.3.2" />
     </ItemGroup>
 
 </Project>

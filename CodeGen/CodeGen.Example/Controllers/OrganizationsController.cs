@@ -55,14 +55,14 @@ public class OrganizationsController : ControllerBase
         return Ok(new EchoResponse(builder.ToString()));
     }
 
-    [HttpGet]
+    [HttpGet("tag-a")]
     [Tags("TagA")]
     public string TagA()
     {
         return "TagA";
     }
 
-    [HttpGet]
+    [HttpGet("tag-a-tag-b")]
     [Tags("TagA", "TagB")]
     public string TagATagB()
     {

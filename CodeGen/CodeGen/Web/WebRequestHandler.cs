@@ -34,7 +34,7 @@ public class WebRequestHandler(ApiAnalyzer apiAnalyzer)
         return value;
     }
 
-    public Task<string> HandleApiRequest(HttpRequest contextRequest)
+    public Task<object> HandleApiRequest(HttpRequest contextRequest)
     {
         var context = apiAnalyzer.Analyze();
 
@@ -46,13 +46,7 @@ public class WebRequestHandler(ApiAnalyzer apiAnalyzer)
             var generateSwr = GetBoolRequestParam(contextRequest, "swr");
             var split = GetBoolRequestParam(contextRequest, "split");
             var configFilePath = GetStringRequestParam(contextRequest, "configFilePath");
-            var ts = context.Compile(generateSwr, split, configFilePath, tag);
-            return Task.FromResult(ts);
-        }
-
-        if (format == "openapi-json")
-        {
-            return Task.FromResult("{}");
+            return Task.FromResult<object>(context.CompileTypeScriptApi(generateSwr, split, configFilePath, tag));
         }
 
         throw new ArgumentException($"Unsupported format {format}");

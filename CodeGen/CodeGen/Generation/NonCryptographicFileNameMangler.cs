@@ -5,7 +5,7 @@ namespace CodeGen.Generation;
 
 public static class NonCryptographicFileNameMangler
 {
-    private static readonly object Lock = new();
+    private static readonly Lock Lock = new();
     private static readonly Dictionary<string, string> Table = new();
 
     public static string Mangle(string name)

@@ -2,11 +2,17 @@ namespace CodeGen.Generation;
 
 public class CodeGenController
 {
-    public CodeGenController(string name)
+    public CodeGenController(Type controllerType, string controllerName)
     {
-        Name = name;
+        ControllerType = controllerType;
+        ControllerName = controllerName;
+        GeneratedName = controllerName;
     }
 
-    public string Name { get; }
+    public Type ControllerType { get; }
+    public string ControllerName { get; }
+    public string GeneratedName { get; set; }
+    public string TypeIdentity => ControllerType.FullName ?? ControllerType.AssemblyQualifiedName ?? ControllerName;
+    public string[] NamespaceParts => ControllerType.Namespace?.Split('.') ?? [];
     public List<CodeGenAction> Actions { get; } = new();
 }

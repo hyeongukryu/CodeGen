@@ -17,7 +17,13 @@ const Watch = process.env['CODEGEN_CLI_WATCH'] === 'Y';
 const Interval = process.env['CODEGEN_CLI_WATCH_INTERVAL'] ?
     parseInt(process.env['CODEGEN_CLI_WATCH_INTERVAL']) : 1000;
 
-async function getCode(swr: boolean, configFilePath: string): Promise<string | null> {
+interface TypeScriptApiResult {
+    typeScriptApi: string;
+    files: WriteFileRequest[];
+    errorMessages: string[];
+}
+
+async function getCode(swr: boolean, configFilePath: string): Promise<TypeScriptApiResult | null> {
     try {
         const params = new URLSearchParams();
         params.append('format', 'typescript-api');
@@ -25,68 +31,24 @@ async function getCode(swr: boolean, configFilePath: string): Promise<string | n
         params.append('split', 'true');
         params.append('configFilePath', configFilePath);
         const res = await fetch(`${ServerRoot}/code-gen-api?${params.toString()}`);
-        const code = await res.json();
-        return code as string;
+        return await res.json() as TypeScriptApiResult;
     } catch {
     }
     return null;
 }
 
-function validateCode(code: string | null): asserts code is string {
-    if (code === null) {
+function validateCode(result: TypeScriptApiResult | null): asserts result is TypeScriptApiResult {
+    if (result === null) {
         throw new Error('Failed to get code');
     }
-    if (code.startsWith('ERROR\nERROR_BEGIN\n')) {
-        const errorEnd = code.indexOf('\nERROR_END\n');
-        const error = code.substring('ERROR\nERROR_BEGIN\n'.length, errorEnd);
-        throw new Error(error);
+    if (result.errorMessages.length > 0) {
+        throw new Error(result.errorMessages.join('\n'));
     }
 }
 
 interface WriteFileRequest {
     fileName: string;
     content: string;
-}
-
-function splitCode(code: string): WriteFileRequest[] {
-    const lines = code.split('\n');
-
-    let currentFileName: string | null = null;
-    let currentFileContent: string = '';
-
-    const files: WriteFileRequest[] = [];
-
-    function beginFile(name: string) {
-        endFile();
-        currentFileName = name;
-    }
-
-    function endFile() {
-        if (currentFileName === null) {
-            return;
-        }
-        files.push({
-            fileName: currentFileName,
-            content: currentFileContent.trim(),
-        });
-        currentFileName = null;
-        currentFileContent = '';
-    }
-
-    for (const line of lines) {
-        if (line.startsWith('// __CODEGEN_VERSION_2_FILE_BOUNDARY__ ')) {
-            const fileName = line.split(' ')[2];
-            beginFile(fileName);
-            continue;
-        }
-        if (currentFileName === null) {
-            throw new Error('Unexpected line outside of file boundary');
-        }
-        currentFileContent += line + '\n';
-    }
-
-    endFile();
-    return files;
 }
 
 async function writeFiles(files: WriteFileRequest[], codePath: string): Promise<void> {
@@ -165,21 +127,23 @@ async function main() {
 
     for (; ;) {
         try {
-            const clientCode = await getCode(true, '../client.config');
-            const serverCode = await getCode(false, '../server.config');
-            if (Watch && (clientCode === null || serverCode === null)) {
+            const clientResult = await getCode(true, '../client.config');
+            const serverResult = await getCode(false, '../server.config');
+            if (Watch && (clientResult === null || serverResult === null)) {
                 writeLog('Failed to get code');
                 continue;
             }
 
-            validateCode(clientCode);
-            validateCode(serverCode);
+            validateCode(clientResult);
+            validateCode(serverResult);
+
+            const clientFiles = clientResult.files;
+            const serverFiles = serverResult.files;
+            const clientCode = JSON.stringify(clientFiles);
+            const serverCode = JSON.stringify(serverFiles);
 
             if (prevClientCode !== clientCode || prevServerCode !== serverCode) {
                 writeLog('Updating API code');
-
-                const clientFiles = splitCode(clientCode);
-                const serverFiles = splitCode(serverCode);
 
                 await clean('src/api/client', clientFiles.map(f => f.fileName));
                 await clean('src/api/server', serverFiles.map(f => f.fileName));

@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using CodeGen.Analysis;
 using Microsoft.AspNetCore.Mvc.ActionConstraints;
@@ -8,10 +9,13 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 
 namespace CodeGen.Generation;
 
-public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenceHandlerConfiguration)
+public class CodeGenGenerationContext(
+    IReferenceHandlerConfiguration referenceHandlerConfiguration,
+    JsonSerializerOptions jsonSerializerOptions)
 {
     private readonly List<CodeGenController> _controllers = [];
     private readonly List<string> _errorMessages = [];
+    private bool _controllerNamesResolved;
 
     public void AddAction(ApiDescription apiDescription)
     {
@@ -26,7 +30,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
             return;
         }
 
-        var controller = EnsureControllerExists(api.ControllerName);
+        var controller = EnsureControllerExists(api.ControllerTypeInfo.AsType(), api.ControllerName);
         if (api.AttributeRouteInfo?.Template == null)
         {
             _errorMessages.Add("Template " + api.ControllerName + " " + api.ActionName);
@@ -114,20 +118,33 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
         return tags.Distinct().OrderBy(t => t);
     }
 
-    private CodeGenController EnsureControllerExists(string controllerName)
+    private CodeGenController EnsureControllerExists(Type controllerType, string controllerName)
     {
-        var controller = _controllers.Find(c => c.Name == controllerName);
+        var controller = _controllers.Find(c => c.ControllerType == controllerType);
         if (controller != null)
         {
             return controller;
         }
 
-        controller = new CodeGenController(controllerName);
+        controller = new CodeGenController(controllerType, controllerName);
         _controllers.Add(controller);
+        _controllerNamesResolved = false;
         return controller;
     }
 
-    private static IEnumerable<string> PrimitiveTypes => new[] { "string", "number", "_Dayjs", "boolean", "bigint" };
+    private void EnsureControllerNamesResolved()
+    {
+        if (_controllerNamesResolved)
+        {
+            return;
+        }
+
+        new ControllerNameResolver().ResolveNames(_controllers);
+        _controllerNamesResolved = true;
+    }
+
+    private static IEnumerable<string> PrimitiveTypes =>
+        new[] { "string", "number", "_Dayjs", "boolean", "bigint", "Uint8Array" };
 
     private static void AddPrimitiveTypes(ICollection<string> converterMethodNames, ICollection<string> definitionNames)
     {
@@ -142,12 +159,16 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
         converterMethodNames.Add("_convert_string_TO_bigint");
         converterMethodNames.Add("_convert_bigint_TO_string");
         converterMethodNames.Add("_convert_boolean_TO_boolean");
+        converterMethodNames.Add("_convert_Uint8Array_TO_string");
+        converterMethodNames.Add("_convert_string_TO_Uint8Array");
         converterMethodNames.Add("_convert_string_TO__Dayjs");
         converterMethodNames.Add("_convert__Dayjs_TO_string");
     }
 
-    private CodeGenResult Generate(bool generateSwr, bool split, string? tag)
+    private CodeGenTypeScriptApiResult GenerateTypeScriptApi(bool generateSwr, bool split, string? tag)
     {
+        EnsureControllerNamesResolved();
+
         ICollection<string> converterNames = new List<string>();
         ICollection<string> converterCodes = new List<string>();
         ICollection<string> definitionNames = new List<string>();
@@ -155,14 +176,16 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
         ICollection<string> urlBuilderCodes = new List<string>();
         ICollection<string> urlBuilderNames = new List<string>();
         ICollection<CodeGenControllerResult> controllerResults = new List<CodeGenControllerResult>();
-        ISet<Tuple<string, string>> definitionFullNames = new HashSet<Tuple<string, string>>();
+        var typeNameResolver = new TypeScriptNameResolver(GenerationTypeCollector.CollectTypes(_controllers, tag));
+        var controllerFileNameResolver = new ControllerFileNameResolver();
+        controllerFileNameResolver.ResolveNames(_controllers);
 
         AddPrimitiveTypes(converterNames, definitionNames);
 
         var definitionGenerator =
-            new TypeScriptDefinitionGenerator(definitionNames, definitionCodes, definitionFullNames, _errorMessages);
+            new TypeScriptDefinitionGenerator(definitionNames, definitionCodes, _errorMessages, typeNameResolver);
         var converterGenerator = new TypeScriptConverterGenerator(
-            converterNames, converterCodes, definitionGenerator, referenceHandlerConfiguration);
+            converterNames, converterCodes, definitionGenerator, referenceHandlerConfiguration, typeNameResolver);
 
         foreach (var controller in _controllers)
         {
@@ -175,7 +198,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
             var builder = new StringBuilder();
             if (!split)
             {
-                builder.AppendLine($"export const {controller.Name} = {{");
+                builder.AppendLine($"export const {controller.GeneratedName} = {{");
             }
 
             foreach (var action in controller.Actions)
@@ -191,7 +214,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 {
                     if (!action.ResponseType.IsEnumerable() && action.ResponseType.GetNullableElementType() != null)
                     {
-                        _errorMessages.Add("ResponseType.GetNullableElementType " + action.Controller.Name + " " +
+                        _errorMessages.Add("ResponseType.GetNullableElementType " + action.Controller.ControllerName + " " +
                                            action.Name);
                         continue;
                     }
@@ -208,9 +231,9 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 queryTypes.ForEach(t => converterGenerator.GenerateIfNotExists(t));
 
                 var pathParameters = pathTypes.Select((t, i) =>
-                    action.PathParameters.ElementAt(i).Name + ": " + t.GetFullWebAppTypeName()).ToList();
+                    action.PathParameters.ElementAt(i).Name + ": " + typeNameResolver.GetFullWebAppTypeName(t)).ToList();
                 var queryParameters = queryTypes.Select((t, i) =>
-                    action.QueryParameters.ElementAt(i).Name + ": " + t.GetFullWebAppTypeName()).ToList();
+                    action.QueryParameters.ElementAt(i).Name + ": " + typeNameResolver.GetFullWebAppTypeName(t)).ToList();
 
                 CodeGenType? payloadType = null;
                 if (action.BodyParameter != null)
@@ -220,7 +243,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 }
 
                 var payloadParameter = action.BodyParameter != null && payloadType != null
-                    ? $"{action.BodyParameter.Name}: {payloadType.GetFullWebAppTypeName()}"
+                    ? $"{action.BodyParameter.Name}: {typeNameResolver.GetFullWebAppTypeName(payloadType)}"
                     : null;
 
                 var actionParameters = pathParameters.Concat(queryParameters)
@@ -238,7 +261,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 }
 
                 var urlBuilderName = action.GetUrlName();
-                var responseTypeName = responseType == null ? "void" : responseType.GetFullWebAppTypeName();
+                var responseTypeName = responseType == null ? "void" : typeNameResolver.GetFullWebAppTypeName(responseType);
                 var parametersWithAxiosRequestConfig = actionParameters
                     .Concat(["_axiosRequestConfig?: _AxiosRequestConfig"]);
                 builder.AppendLine(
@@ -248,7 +271,8 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 var payloadArgument = "";
                 if (payloadType != null && action.BodyParameter != null)
                 {
-                    payloadArgument = ", " + payloadType.GetConverterName(true) + $"({action.BodyParameter.Name})";
+                    payloadArgument = ", " + typeNameResolver.GetConverterName(payloadType, true) +
+                                      $"({action.BodyParameter.Name})";
                 }
 
                 // TS6133: '_response' is declared but its value is never read.
@@ -259,7 +283,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 if (responseType != null)
                 {
                     builder.AppendLine(
-                        $"    return _restoreCircularReferences({responseType.GetConverterName(false)}(_response.data), _createObject);");
+                        $"    return _restoreCircularReferences({typeNameResolver.GetConverterName(responseType, false)}(_response.data), _createObject);");
                 }
 
                 builder.AppendLine("}" + (split ? "" : ","));
@@ -270,9 +294,9 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                         { "_config: _SWRConfiguration = {}", "_shouldFetch: boolean = true" });
                     builder.AppendLine((split ? "export function " : "") +
                                        $"useSWR{actionName.ToPascalCase()}({string.Join(", ", swrParameters)}) {{");
-                    builder.AppendLine($"    return _useSWR<{responseType.GetFullWebAppTypeName()}>" +
+                    builder.AppendLine($"    return _useSWR<{typeNameResolver.GetFullWebAppTypeName(responseType)}>" +
                                        $"(_shouldFetch ? {urlBuilderName}({urlBuilderArgs}) : null, " +
-                                       $"{{ ..._config, use: [_createSWRMiddleware({responseType.GetConverterName(false)})] }});");
+                                       $"{{ ..._config, use: [_createSWRMiddleware({typeNameResolver.GetConverterName(responseType, false)})] }});");
                     builder.AppendLine("}" + (split ? "" : ","));
                 }
 
@@ -286,7 +310,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                     for (var q = 0; q < queryTypes.Count; q++)
                     {
                         var name = queryArgs[q];
-                        var queryConverter = queryTypes[q].GetConverterName(true);
+                        var queryConverter = typeNameResolver.GetConverterName(queryTypes[q], true);
                         converterGenerator.GenerateIfNotExists(queryTypes[q]);
                         var nameTemp = "_converted_" + name;
                         urlBuilder.AppendLine($"    const {nameTemp} = {queryConverter}({name});");
@@ -313,7 +337,10 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 builder.Append('}');
             }
 
-            controllerResults.Add(new CodeGenControllerResult(controller.Name, builder.ToString()));
+            controllerResults.Add(new CodeGenControllerResult(
+                controller.GeneratedName,
+                controllerFileNameResolver.GetFileName(controller),
+                builder.ToString()));
         }
 
         var dependencyErrors = converterGenerator.CheckDependencyErrors();
@@ -322,13 +349,13 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
             _errorMessages.Add(dependencyErrors);
         }
 
-        return new CodeGenResult(controllerResults, definitionCodes, definitionNames,
+        return new CodeGenTypeScriptApiResult(controllerResults, definitionCodes, definitionNames,
             converterCodes, converterNames, urlBuilderCodes, urlBuilderNames);
     }
 
     private static string GetResourceString(string name)
     {
-        var assembly = typeof(TypeScriptGenerationContext).Assembly;
+        var assembly = typeof(CodeGenGenerationContext).Assembly;
         var resource = assembly.GetManifestResourceStream(name);
         if (resource == null)
         {
@@ -353,9 +380,46 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
         return string.Join(Environment.NewLine, exportedLines);
     }
 
-    public string Compile(bool generateSwr, bool split, string configFilePath, string? tag)
+    private List<string> GetSerializerAssumptionErrors()
     {
+        return new CodeGenSerializerAssumptionsValidator(jsonSerializerOptions, referenceHandlerConfiguration)
+            .Validate(_controllers)
+            .ToList();
+    }
+
+    public TypeScriptApiResult CompileTypeScriptApi(bool generateSwr, bool split, string configFilePath, string? tag)
+    {
+        var serializerAssumptionErrors = GetSerializerAssumptionErrors();
+        if (serializerAssumptionErrors.Count > 0)
+        {
+            return new TypeScriptApiResult
+            {
+                TypeScriptApi = "",
+                Files = [],
+                ErrorMessages = serializerAssumptionErrors
+            };
+        }
+
         var builder = new StringBuilder();
+        var files = new List<TypeScriptApiFile>();
+        string? currentFileName = null;
+
+        void EndFile()
+        {
+            if (!split || currentFileName == null)
+            {
+                return;
+            }
+
+            files.Add(new TypeScriptApiFile
+            {
+                FileName = currentFileName,
+                Content = builder.ToString().TrimEnd()
+            });
+
+            builder.Clear();
+            currentFileName = null;
+        }
 
         void BeginFile(string fileName)
         {
@@ -364,51 +428,43 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 return;
             }
 
-            builder.AppendLine("// __CODEGEN_VERSION_2_FILE_BOUNDARY__ " + fileName);
+            EndFile();
+            currentFileName = fileName;
             if (generateSwr)
             {
-                builder.AppendLine(GetResourceString("CodeGen.Generation.header-swr.ts"));
+                builder.AppendLine(GetResourceString("CodeGen.Generation.TypeScriptTemplates.header-swr.ts"));
             }
             else
             {
-                builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
+                builder.AppendLine(GetResourceString("CodeGen.Generation.TypeScriptTemplates.header.ts"));
             }
         }
 
-        var result = Generate(generateSwr, split, tag);
+        var result = GenerateTypeScriptApi(generateSwr, split, tag);
         var separator = Environment.NewLine + Environment.NewLine;
-
-        if (_errorMessages.Any())
-        {
-            builder.AppendLine("ERROR");
-            builder.AppendLine("ERROR_BEGIN");
-            builder.AppendLine(string.Join(Environment.NewLine, _errorMessages));
-            builder.AppendLine("ERROR_END");
-            builder.AppendLine();
-        }
 
         if (!split)
         {
             if (generateSwr)
             {
-                builder.AppendLine(GetResourceString("CodeGen.Generation.header-swr.ts"));
+                builder.AppendLine(GetResourceString("CodeGen.Generation.TypeScriptTemplates.header-swr.ts"));
             }
             else
             {
-                builder.AppendLine(GetResourceString("CodeGen.Generation.header.ts"));
+                builder.AppendLine(GetResourceString("CodeGen.Generation.TypeScriptTemplates.header.ts"));
             }
         }
 
         BeginFile("_util.ts");
         builder.AppendLine("import _codeGenConfig from '" + configFilePath + "';");
-        builder.AppendLine(GetResourceString("CodeGen.Generation.util.ts"));
+        builder.AppendLine(GetResourceString("CodeGen.Generation.TypeScriptTemplates.util.ts"));
         builder.AppendLine(referenceHandlerConfiguration.PreserveReferences
             ? "export const _restoreCircularReferences = restoreCircularReferences;"
             : "export const _restoreCircularReferences = (obj: any, _: unknown) => obj;");
 
         if (generateSwr)
         {
-            builder.AppendLine(GetResourceString("CodeGen.Generation.util-swr.ts"));
+            builder.AppendLine(GetResourceString("CodeGen.Generation.TypeScriptTemplates.util-swr.ts"));
         }
 
         ISet<string> GetIdentifiersUsed(string code)
@@ -446,7 +502,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
         var orderedControllers = result.Controllers.OrderBy(c => c.Name).ToList();
         foreach (var controller in orderedControllers)
         {
-            BeginFile($"_{NonCryptographicFileNameMangler.Mangle(controller.Name)}.ts");
+            BeginFile($"{controller.FileName}.ts");
             if (split)
             {
                 builder.AppendLine("import { _createHttp, _createObject, _restoreCircularReferences } from './_util';");
@@ -475,12 +531,12 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
         {
             builder.AppendLine("import { _hasOwnPropertyRef, _hasOwnPropertyValues } from './_util';");
             builder.AppendLine(ImportTypes(GetIdentifiersUsed(converterCode)));
-            builder.AppendLine(ExportFunctions(GetResourceString("CodeGen.Generation.primitive-converters.ts")));
+            builder.AppendLine(ExportFunctions(GetResourceString("CodeGen.Generation.TypeScriptTemplates.primitive-converters.ts")));
             builder.AppendLine(ExportFunctions(converterCode));
         }
         else
         {
-            builder.AppendLine(GetResourceString("CodeGen.Generation.primitive-converters.ts"));
+            builder.AppendLine(GetResourceString("CodeGen.Generation.TypeScriptTemplates.primitive-converters.ts"));
             builder.AppendLine(converterCode);
         }
 
@@ -504,10 +560,17 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
             foreach (var controller in orderedControllers)
             {
                 builder.AppendLine(
-                    $"export * as {controller.Name} from './_{NonCryptographicFileNameMangler.Mangle(controller.Name)}';");
+                    $"export * as {controller.Name} from './{controller.FileName}';");
             }
         }
 
-        return builder.ToString();
+        EndFile();
+
+        return new TypeScriptApiResult
+        {
+            TypeScriptApi = split ? "" : builder.ToString(),
+            Files = files,
+            ErrorMessages = _errorMessages.Distinct().OrderBy(message => message).ToList()
+        };
     }
 }

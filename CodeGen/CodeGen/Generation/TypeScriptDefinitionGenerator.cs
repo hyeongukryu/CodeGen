@@ -7,36 +7,32 @@ namespace CodeGen.Generation;
 public class TypeScriptDefinitionGenerator
 {
     private readonly ICollection<string> _definitionNames;
-    private readonly ISet<Tuple<string, string>> _definitionFullNames;
     private readonly ICollection<string> _errorMessages;
     private readonly ICollection<string> _definitionCodes;
+    private readonly TypeScriptNameResolver _typeNameResolver;
 
     public TypeScriptDefinitionGenerator(ICollection<string> definitionNames,
         ICollection<string> definitionCodes,
-        ISet<Tuple<string, string>> definitionFullNames,
-        ICollection<string> errorMessages)
+        ICollection<string> errorMessages,
+        TypeScriptNameResolver typeNameResolver)
     {
         _definitionNames = definitionNames;
         _definitionCodes = definitionCodes;
-        _definitionFullNames = definitionFullNames;
         _errorMessages = errorMessages;
+        _typeNameResolver = typeNameResolver;
     }
 
     private void Generate(CodeGenType type, bool generatePayloadName)
     {
         var properties = type.BaseType.GetProperties();
         var builder = new StringBuilder();
-        var typeName = generatePayloadName ? type.GetPayloadTypeName() : type.GetWebAppTypeName();
+        var typeName = generatePayloadName
+            ? _typeNameResolver.GetPayloadTypeName(type)
+            : _typeNameResolver.GetWebAppTypeName(type);
         var fullName = type.BaseType.AssemblyQualifiedName;
         if (fullName == null)
         {
             _errorMessages.Add("AssemblyQualifiedName " + typeName);
-        }
-
-        if (_definitionFullNames.Any(typeNameAndFullNAme =>
-                typeNameAndFullNAme.Item1 == typeName && typeNameAndFullNAme.Item2 != fullName))
-        {
-            _errorMessages.Add("DefinitionFullNames " + typeName);
         }
 
         if (_definitionNames.Contains(typeName))
@@ -45,7 +41,6 @@ public class TypeScriptDefinitionGenerator
         }
 
         _definitionNames.Add(typeName);
-        _definitionFullNames.Add(Tuple.Create(typeName, fullName)!);
 
         builder.AppendLine("export interface " + typeName + " {");
 
@@ -59,8 +54,8 @@ public class TypeScriptDefinitionGenerator
             var propertyType = property.ToCodeGenType();
 
             var propertyTypeName = generatePayloadName
-                ? propertyType.GetFullPayloadTypeName()
-                : propertyType.GetFullWebAppTypeName();
+                ? _typeNameResolver.GetFullPayloadTypeName(propertyType)
+                : _typeNameResolver.GetFullWebAppTypeName(propertyType);
 
             GenerateIfNotExists(propertyType);
             builder.AppendLine($"    {property.Name.ToCamelCase()}: {propertyTypeName};");
