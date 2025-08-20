@@ -61,6 +61,7 @@ public static class TypeScriptHelper
             "NodaTime.Instant" => "_Dayjs",
             "NodaTime.LocalDate" => "string",
             "NodaTime.LocalTime" => "string",
+            "NodaTime.LocalDateTime" => "string",
             "System.DateTime" => "string",
             _ => type.BaseType.Name
         };
@@ -80,6 +81,7 @@ public static class TypeScriptHelper
             "NodaTime.Instant" => "string",
             "NodaTime.LocalDate" => "string",
             "NodaTime.LocalTime" => "string",
+            "NodaTime.LocalDateTime" => "string",
             "System.DateTime" => "string",
             _ => "_api_" + type.BaseType.Name
         };
