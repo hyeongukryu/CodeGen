@@ -65,7 +65,10 @@ function splitCode(code: string): WriteFileRequest[] {
         if (currentFileName === null) {
             return;
         }
-        files.push({ fileName: currentFileName, content: currentFileContent });
+        files.push({
+            fileName: currentFileName,
+            content: currentFileContent.trim(),
+        });
         currentFileName = null;
         currentFileContent = '';
     }
