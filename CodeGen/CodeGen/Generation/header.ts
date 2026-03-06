@@ -1,4 +1,5 @@
 /* eslint-disable */
+// biome-ignore-all lint: auto-generated
 // auto-generated
 
-import _dayjs, { Dayjs as _Dayjs } from 'dayjs';
+import _dayjs, { type Dayjs as _Dayjs } from 'dayjs';

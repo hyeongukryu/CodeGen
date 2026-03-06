@@ -417,29 +417,30 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
         }
 
-        string ImportAll(IEnumerable<string> imports, string importFilePath)
+        string ImportAll(IEnumerable<string> imports, string importFilePath, bool typeOnly)
         {
             var lines = imports.Select(i => "    " + i + "," + Environment.NewLine);
-            return "import {" + Environment.NewLine + string.Join("", lines) + "} from '" + importFilePath + "';";
+            return "import " + (typeOnly ? "type " : "") +
+                   "{" + Environment.NewLine + string.Join("", lines) + "} from '" + importFilePath + "';";
         }
 
         string ImportTypes(ISet<string> identifiersUsed)
         {
             var used = result.DefinitionNames.Where(name =>
                 !PrimitiveTypes.Contains(name) && identifiersUsed.Contains(name));
-            return ImportAll(used, "./_types");
+            return ImportAll(used, "./_types", true);
         }
 
         string ImportConverters(ISet<string> identifiersUsed)
         {
             var used = result.ConverterNames.Where(identifiersUsed.Contains);
-            return ImportAll(used, "./_converters");
+            return ImportAll(used, "./_converters", false);
         }
 
         string ImportUrlBuilders(ISet<string> identifiersUsed)
         {
             var used = result.UrlBuilderNames.Where(identifiersUsed.Contains);
-            return ImportAll(used, "./_url-builders");
+            return ImportAll(used, "./_url-builders", false);
         }
 
         var orderedControllers = result.Controllers.OrderBy(c => c.Name).ToList();
@@ -452,7 +453,7 @@ public class TypeScriptGenerationContext(IReferenceHandlerConfiguration referenc
                 builder.AppendLine("import type { AxiosRequestConfig as _AxiosRequestConfig } from 'axios';");
                 if (generateSwr)
                 {
-                    builder.AppendLine("import _useSWR, { SWRConfiguration as _SWRConfiguration } from 'swr';");
+                    builder.AppendLine("import _useSWR, { type SWRConfiguration as _SWRConfiguration } from 'swr';");
                     builder.AppendLine("import { _createSWRMiddleware } from './_util';");
                 }
 

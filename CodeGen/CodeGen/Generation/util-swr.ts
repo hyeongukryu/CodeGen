@@ -1,4 +1,4 @@
-import _useSWR, { SWRConfiguration as _SWRConfiguration, Middleware as _Middleware, SWRHook as _SWRHook } from 'swr';
+import _useSWR, { type SWRConfiguration as _SWRConfiguration, type Middleware as _Middleware, type SWRHook as _SWRHook } from 'swr';
 
 export function _createSWRMiddleware(_convert: (from: any) => any): _Middleware {
     return (useSWRNext: _SWRHook) => (key, fetcher, config) => {
