@@ -63,6 +63,7 @@ public static class TypeScriptHelper
             "NodaTime.LocalTime" => "string",
             "NodaTime.LocalDateTime" => "string",
             "System.DateTime" => "string",
+            "System.Decimal" => "number",
             _ => type.BaseType.Name
         };
     }
@@ -83,6 +84,7 @@ public static class TypeScriptHelper
             "NodaTime.LocalTime" => "string",
             "NodaTime.LocalDateTime" => "string",
             "System.DateTime" => "string",
+            "System.Decimal" => "string",
             _ => "_api_" + type.BaseType.Name
         };
     }
