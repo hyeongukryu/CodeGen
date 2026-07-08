@@ -55,6 +55,8 @@ public class CodeGenGenerationContext(
             return;
         }
 
+        var httpMethod = HttpMethods.GetCanonicalizedValue(httpMethodActionConstraint.HttpMethods.First());
+
         if (api.Parameters.Any(p => p is not ControllerParameterDescriptor))
         {
             _errorMessages.Add("ControllerParameterDescriptor " + api.ControllerName + " " + api.ActionName);
@@ -69,6 +71,13 @@ public class CodeGenGenerationContext(
         if (bodyParameters.Count > 1)
         {
             _errorMessages.Add("bodyParameters " + api.ControllerName + " " + api.ActionName);
+            return;
+        }
+
+        if (bodyParameters.Count > 0 && httpMethod is not "POST" and not "PUT" and not "PATCH")
+        {
+            _errorMessages.Add("BodyParameterUnsupportedHttpMethod " + httpMethod + " " +
+                               api.ControllerName + " " + api.ActionName);
             return;
         }
 
@@ -101,7 +110,7 @@ public class CodeGenGenerationContext(
 
         controller.Actions.Add(new CodeGenAction(controller, api.ActionName,
             api.AttributeRouteInfo.Template,
-            HttpMethods.GetCanonicalizedValue(httpMethodActionConstraint.HttpMethods.First()),
+            httpMethod,
             bodyParameters.FirstOrDefault(),
             pathParameters.ToList(), queryParameters.ToList(), responseType,
             responseType == null, tags
@@ -268,17 +277,19 @@ public class CodeGenGenerationContext(
                     (split ? "export async function" : "async") +
                     $" {actionName}({string.Join(", ", parametersWithAxiosRequestConfig)}): Promise<{responseTypeName}> {{");
 
-                var payloadArgument = "";
+                string? dataExpression = null;
                 if (payloadType != null && action.BodyParameter != null)
                 {
-                    payloadArgument = ", " + typeNameResolver.GetConverterName(payloadType, true) +
-                                      $"({action.BodyParameter.Name})";
+                    dataExpression = typeNameResolver.GetConverterName(payloadType, true) +
+                                     $"({action.BodyParameter.Name})";
                 }
 
                 // TS6133: '_response' is declared but its value is never read.
                 var declareResponseLocalVar = responseType != null ? "const _response: any = " : "";
+                var urlExpression = $"{urlBuilderName}({urlBuilderArgs})";
+                var httpCallArguments = BuildHttpCallArguments(action.HttpMethod, urlExpression, dataExpression);
                 builder.AppendLine($"    {declareResponseLocalVar}await _createHttp().{action.HttpMethod.ToLower()}" +
-                                   $"({urlBuilderName}({urlBuilderArgs}){payloadArgument}, _axiosRequestConfig);");
+                                   $"({httpCallArguments});");
 
                 if (responseType != null)
                 {
@@ -383,6 +394,18 @@ public class CodeGenGenerationContext(
     private static string EnsureTrailingNewLine(string code)
     {
         return code.Length == 0 ? code : code.TrimEnd() + Environment.NewLine;
+    }
+
+    private static string BuildHttpCallArguments(string httpMethod, string urlExpression, string? dataExpression)
+    {
+        if (httpMethod is "POST" or "PUT" or "PATCH")
+        {
+            return dataExpression == null
+                ? $"{urlExpression}, undefined, _axiosRequestConfig"
+                : $"{urlExpression}, {dataExpression}, _axiosRequestConfig";
+        }
+
+        return $"{urlExpression}, _axiosRequestConfig";
     }
 
     private List<string> GetSerializerAssumptionErrors()

@@ -7,7 +7,9 @@ using BuiltInController = CodeGen.Tests.Generation.TestControllers.BuiltIns.Buil
 using CollisionAController = CodeGen.Tests.Generation.TestControllers.CollisionA.CollisionController;
 using CollisionBController = CodeGen.Tests.Generation.TestControllers.CollisionB.CollisionController;
 using FirstMangleDuplicateController = CodeGen.Tests.Generation.TestControllers.Mangle.First.DuplicateController;
+using HttpCallSignatureController = CodeGen.Tests.Generation.TestControllers.HttpCallSignatures.HttpCallSignatureController;
 using SecondMangleDuplicateController = CodeGen.Tests.Generation.TestControllers.Mangle.Second.DuplicateController;
+using UnsupportedHttpCallSignatureController = CodeGen.Tests.Generation.TestControllers.HttpCallSignatures.UnsupportedHttpCallSignatureController;
 using InvalidDefinitionController = CodeGen.Tests.Generation.TestControllers.Invalid.InvalidDefinitionController;
 using PrefixASharedDuplicateController = CodeGen.Tests.Generation.TestControllers.PrefixA.Shared.DuplicateController;
 using PrefixBSharedDuplicateController = CodeGen.Tests.Generation.TestControllers.PrefixB.Shared.DuplicateController;
@@ -187,6 +189,46 @@ public class TypeScriptApiGenerationTest
         Assert.DoesNotContain("export interface Uri {", code);
         Assert.DoesNotContain("export interface Byte {", code);
         Assert.DoesNotContain("export interface Uint8Array {", code);
+    }
+
+    [Fact]
+    public void CompileTypeScriptApi_GeneratesAxiosCallSignaturesByHttpMethodAndBody()
+    {
+        using var serviceProvider = GenerationTestHelper.BuildServiceProvider(
+            configureExpectedJsonOptions: true,
+            typeof(HttpCallSignatureController));
+
+        var analyzer = serviceProvider.GetRequiredService<ApiAnalyzer>();
+        var result = analyzer.Analyze().CompileTypeScriptApi(false, false, "./config", null);
+
+        Assert.Empty(result.ErrorMessages);
+        Assert.Contains(
+            "await _createHttp().post(_HttpCallSignature_POST_PostNoBody_url(), undefined, _axiosRequestConfig);",
+            result.TypeScriptApi);
+        Assert.Contains(
+            "await _createHttp().put(_HttpCallSignature_PUT_PutNoBody_url(), undefined, _axiosRequestConfig);",
+            result.TypeScriptApi);
+        Assert.Contains(
+            "await _createHttp().patch(_HttpCallSignature_PATCH_PatchNoBody_url(), undefined, _axiosRequestConfig);",
+            result.TypeScriptApi);
+        Assert.Contains(
+            "await _createHttp().delete(_HttpCallSignature_DELETE_DeleteNoBody_url(), _axiosRequestConfig);",
+            result.TypeScriptApi);
+    }
+
+    [Fact]
+    public void CompileTypeScriptApi_ReportsBodyParametersForUnsupportedHttpMethods()
+    {
+        using var serviceProvider = GenerationTestHelper.BuildServiceProvider(
+            configureExpectedJsonOptions: true,
+            typeof(UnsupportedHttpCallSignatureController));
+
+        var analyzer = serviceProvider.GetRequiredService<ApiAnalyzer>();
+        var result = analyzer.Analyze().CompileTypeScriptApi(false, false, "./config", null);
+
+        Assert.Contains(result.ErrorMessages,
+            message => message.Contains(
+                "BodyParameterUnsupportedHttpMethod DELETE UnsupportedHttpCallSignature DeleteWithBody"));
     }
 
     [Fact]

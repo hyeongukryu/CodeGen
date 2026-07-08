@@ -154,3 +154,48 @@ namespace CodeGen.Tests.Generation.TestControllers.BuiltIns
         public required byte[] Bytes { get; init; }
     }
 }
+
+namespace CodeGen.Tests.Generation.TestControllers.HttpCallSignatures
+{
+    [ApiController]
+    [Route("http-call-signatures")]
+    public class HttpCallSignatureController : ControllerBase
+    {
+        [HttpPost("no-body")]
+        public ActionResult<string> PostNoBody()
+        {
+            return Ok("ok");
+        }
+
+        [HttpPut("no-body")]
+        public ActionResult<string> PutNoBody()
+        {
+            return Ok("ok");
+        }
+
+        [HttpPatch("no-body")]
+        public ActionResult<string> PatchNoBody()
+        {
+            return Ok("ok");
+        }
+
+        [HttpDelete("no-body")]
+        public ActionResult<string> DeleteNoBody()
+        {
+            return Ok("ok");
+        }
+    }
+
+    [ApiController]
+    [Route("unsupported-http-call-signatures")]
+    public class UnsupportedHttpCallSignatureController : ControllerBase
+    {
+        [HttpDelete("with-body")]
+        public ActionResult<string> DeleteWithBody([FromBody] DeleteRequest request)
+        {
+            return Ok(request.Value);
+        }
+    }
+
+    public record DeleteRequest(string Value);
+}
