@@ -33,6 +33,7 @@ public class TypeScriptApiGenerationTest
         Assert.Contains("async echo(", result.TypeScriptApi);
         Assert.DoesNotContain("useSWR", result.TypeScriptApi);
         Assert.DoesNotContain("__CODEGEN_VERSION_2_FILE_BOUNDARY__", result.TypeScriptApi);
+        Assert.EndsWith(Environment.NewLine, result.TypeScriptApi);
     }
 
     [Fact]
@@ -57,6 +58,7 @@ public class TypeScriptApiGenerationTest
         Assert.Contains("export function useSWRTagATagB(", combined);
         Assert.DoesNotContain("export async function tagA(", combined);
         Assert.DoesNotContain("export async function getAll(", combined);
+        Assert.All(result.Files, file => Assert.EndsWith(Environment.NewLine, file.Content));
     }
 
     [Fact]

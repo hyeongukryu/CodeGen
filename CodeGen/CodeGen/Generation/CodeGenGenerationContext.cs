@@ -380,6 +380,11 @@ public class CodeGenGenerationContext(
         return string.Join(Environment.NewLine, exportedLines);
     }
 
+    private static string EnsureTrailingNewLine(string code)
+    {
+        return code.Length == 0 ? code : code.TrimEnd() + Environment.NewLine;
+    }
+
     private List<string> GetSerializerAssumptionErrors()
     {
         return new CodeGenSerializerAssumptionsValidator(jsonSerializerOptions, referenceHandlerConfiguration)
@@ -414,7 +419,7 @@ public class CodeGenGenerationContext(
             files.Add(new TypeScriptApiFile
             {
                 FileName = currentFileName,
-                Content = builder.ToString().TrimEnd()
+                Content = EnsureTrailingNewLine(builder.ToString())
             });
 
             builder.Clear();
@@ -568,7 +573,7 @@ public class CodeGenGenerationContext(
 
         return new TypeScriptApiResult
         {
-            TypeScriptApi = split ? "" : builder.ToString(),
+            TypeScriptApi = split ? "" : EnsureTrailingNewLine(builder.ToString()),
             Files = files,
             ErrorMessages = _errorMessages.Distinct().OrderBy(message => message).ToList()
         };
