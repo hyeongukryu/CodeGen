@@ -263,19 +263,15 @@ public class CodeGenGenerationContext(
                 var urlBuilderArgs = string.Join(", ", pathArgs.Concat(queryArgs));
 
                 var actionName = action.Name.ToCamelCase();
-                if (actionName == "delete")
-                {
-                    // JavaScript reserved word
-                    actionName = "/* delete */ Delete";
-                }
+                var actionImplementationName = split ? "$" + actionName : actionName;
 
                 var urlBuilderName = action.GetUrlName();
                 var responseTypeName = responseType == null ? "void" : typeNameResolver.GetFullWebAppTypeName(responseType);
                 var parametersWithAxiosRequestConfig = actionParameters
                     .Concat(["_axiosRequestConfig?: _AxiosRequestConfig"]);
                 builder.AppendLine(
-                    (split ? "export async function" : "async") +
-                    $" {actionName}({string.Join(", ", parametersWithAxiosRequestConfig)}): Promise<{responseTypeName}> {{");
+                    (split ? "async function" : "async") +
+                    $" {actionImplementationName}({string.Join(", ", parametersWithAxiosRequestConfig)}): Promise<{responseTypeName}> {{");
 
                 string? dataExpression = null;
                 if (payloadType != null && action.BodyParameter != null)
@@ -298,17 +294,27 @@ public class CodeGenGenerationContext(
                 }
 
                 builder.AppendLine("}" + (split ? "" : ","));
+                if (split)
+                {
+                    builder.AppendLine($"export {{ {actionImplementationName} as {actionName} }};");
+                }
 
                 if (generateSwr && action.HttpMethod == "GET" && responseType != null)
                 {
+                    var swrActionName = $"useSWR{actionName.ToPascalCase()}";
+                    var swrImplementationName = split ? "$" + swrActionName : swrActionName;
                     var swrParameters = actionParameters.Concat(new[]
                         { "_config: _SWRConfiguration = {}", "_shouldFetch: boolean = true" });
-                    builder.AppendLine((split ? "export function " : "") +
-                                       $"useSWR{actionName.ToPascalCase()}({string.Join(", ", swrParameters)}) {{");
+                    builder.AppendLine((split ? "function " : "") +
+                                       $"{swrImplementationName}({string.Join(", ", swrParameters)}) {{");
                     builder.AppendLine($"    return _useSWR<{typeNameResolver.GetFullWebAppTypeName(responseType)}>" +
                                        $"(_shouldFetch ? {urlBuilderName}({urlBuilderArgs}) : null, " +
                                        $"{{ ..._config, use: [_createSWRMiddleware({typeNameResolver.GetConverterName(responseType, false)})] }});");
                     builder.AppendLine("}" + (split ? "" : ","));
+                    if (split)
+                    {
+                        builder.AppendLine($"export {{ {swrImplementationName} as {swrActionName} }};");
+                    }
                 }
 
                 var urlBuilder = new StringBuilder();

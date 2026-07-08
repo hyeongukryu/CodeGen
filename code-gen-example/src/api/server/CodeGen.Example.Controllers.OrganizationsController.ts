@@ -26,22 +26,27 @@ import {
     _Organizations_GET_TagA_url,
     _Organizations_GET_TagATagB_url,
 } from './_url-builders';
-export async function returnsEmpty(_axiosRequestConfig?: _AxiosRequestConfig): Promise<void> {
+async function $returnsEmpty(_axiosRequestConfig?: _AxiosRequestConfig): Promise<void> {
     await _createHttp().get(_Organizations_GET_ReturnsEmpty_url(), _axiosRequestConfig);
 }
-export async function getAll(_axiosRequestConfig?: _AxiosRequestConfig): Promise<Department[]> {
+export { $returnsEmpty as returnsEmpty };
+async function $getAll(_axiosRequestConfig?: _AxiosRequestConfig): Promise<Department[]> {
     const _response: any = await _createHttp().get(_Organizations_GET_GetAll_url(), _axiosRequestConfig);
     return _restoreCircularReferences(_convert__api_Department_TO_Department_Array(_response.data), _createObject);
 }
-export async function echo(request: EchoRequest, _axiosRequestConfig?: _AxiosRequestConfig): Promise<EchoResponse> {
+export { $getAll as getAll };
+async function $echo(request: EchoRequest, _axiosRequestConfig?: _AxiosRequestConfig): Promise<EchoResponse> {
     const _response: any = await _createHttp().post(_Organizations_POST_Echo_url(), _convert_EchoRequest_TO__api_EchoRequest(request), _axiosRequestConfig);
     return _restoreCircularReferences(_convert__api_EchoResponse_TO_EchoResponse(_response.data), _createObject);
 }
-export async function tagA(_axiosRequestConfig?: _AxiosRequestConfig): Promise<string> {
+export { $echo as echo };
+async function $tagA(_axiosRequestConfig?: _AxiosRequestConfig): Promise<string> {
     const _response: any = await _createHttp().get(_Organizations_GET_TagA_url(), _axiosRequestConfig);
     return _restoreCircularReferences(_convert_string_TO_string(_response.data), _createObject);
 }
-export async function tagATagB(_axiosRequestConfig?: _AxiosRequestConfig): Promise<string> {
+export { $tagA as tagA };
+async function $tagATagB(_axiosRequestConfig?: _AxiosRequestConfig): Promise<string> {
     const _response: any = await _createHttp().get(_Organizations_GET_TagATagB_url(), _axiosRequestConfig);
     return _restoreCircularReferences(_convert_string_TO_string(_response.data), _createObject);
 }
+export { $tagATagB as tagATagB };

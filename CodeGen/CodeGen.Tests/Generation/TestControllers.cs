@@ -50,6 +50,20 @@ namespace CodeGen.Tests.Generation.TestControllers.Invalid
     }
 }
 
+namespace CodeGen.Tests.Generation.TestControllers.ReservedNames
+{
+    [ApiController]
+    [Route("reserved-names")]
+    public class ReservedNameController : ControllerBase
+    {
+        [HttpPost("delete")]
+        public ActionResult<string> Delete()
+        {
+            return Ok("ok");
+        }
+    }
+}
+
 namespace CodeGen.Tests.Generation.TestControllers.PrefixA.Shared
 {
     [ApiController]

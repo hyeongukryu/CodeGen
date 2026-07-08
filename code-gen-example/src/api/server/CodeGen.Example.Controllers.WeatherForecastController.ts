@@ -17,7 +17,8 @@ import {
 import {
     _WeatherForecast_GET_Get_url,
 } from './_url-builders';
-export async function get(count: number, temp: number, value: bigint, _axiosRequestConfig?: _AxiosRequestConfig): Promise<WeatherForecast[]> {
+async function $get(count: number, temp: number, value: bigint, _axiosRequestConfig?: _AxiosRequestConfig): Promise<WeatherForecast[]> {
     const _response: any = await _createHttp().get(_WeatherForecast_GET_Get_url(count, temp, value), _axiosRequestConfig);
     return _restoreCircularReferences(_convert__api_WeatherForecast_TO_WeatherForecast_Array(_response.data), _createObject);
 }
+export { $get as get };

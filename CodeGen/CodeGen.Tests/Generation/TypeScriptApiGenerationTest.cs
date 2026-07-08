@@ -13,6 +13,7 @@ using UnsupportedHttpCallSignatureController = CodeGen.Tests.Generation.TestCont
 using InvalidDefinitionController = CodeGen.Tests.Generation.TestControllers.Invalid.InvalidDefinitionController;
 using PrefixASharedDuplicateController = CodeGen.Tests.Generation.TestControllers.PrefixA.Shared.DuplicateController;
 using PrefixBSharedDuplicateController = CodeGen.Tests.Generation.TestControllers.PrefixB.Shared.DuplicateController;
+using ReservedNameController = CodeGen.Tests.Generation.TestControllers.ReservedNames.ReservedNameController;
 
 namespace CodeGen.Tests.Generation;
 
@@ -56,11 +57,50 @@ public class TypeScriptApiGenerationTest
         Assert.Contains("_util.ts", fileMap.Keys);
         Assert.Contains("index.ts", fileMap.Keys);
         Assert.Contains("import _useSWR", combined);
-        Assert.Contains("export async function tagATagB(", combined);
-        Assert.Contains("export function useSWRTagATagB(", combined);
-        Assert.DoesNotContain("export async function tagA(", combined);
-        Assert.DoesNotContain("export async function getAll(", combined);
+        Assert.Contains("async function $tagATagB(", combined);
+        Assert.Contains("function $useSWRTagATagB(", combined);
+        Assert.Contains("export { $tagATagB as tagATagB };", combined);
+        Assert.Contains("export { $useSWRTagATagB as useSWRTagATagB };", combined);
+        Assert.DoesNotContain("export { $tagA as tagA };", combined);
+        Assert.DoesNotContain("export { $getAll as getAll };", combined);
         Assert.All(result.Files, file => Assert.EndsWith(Environment.NewLine, file.Content));
+    }
+
+    [Fact]
+    public void CompileTypeScriptApi_UsesExportAliasesForSplitControllerFunctions()
+    {
+        using var serviceProvider = GenerationTestHelper.BuildServiceProvider(
+            configureExpectedJsonOptions: true,
+            typeof(ReservedNameController));
+
+        var analyzer = serviceProvider.GetRequiredService<ApiAnalyzer>();
+        var result = analyzer.Analyze().CompileTypeScriptApi(false, true, "./config", null);
+
+        Assert.Empty(result.ErrorMessages);
+        var controllerFile = result.Files.Single(file =>
+            file.FileName.EndsWith("ReservedNameController.ts", StringComparison.Ordinal)).Content;
+        Assert.Contains("async function $delete(", controllerFile);
+        Assert.Contains("export { $delete as delete };", controllerFile);
+        Assert.DoesNotContain("export async function delete(", controllerFile);
+        Assert.DoesNotContain("/* delete */", controllerFile);
+    }
+
+    [Fact]
+    public void CompileTypeScriptApi_DoesNotUseImplementationNameEscapeForSingleFileControllerMethods()
+    {
+        using var serviceProvider = GenerationTestHelper.BuildServiceProvider(
+            configureExpectedJsonOptions: true,
+            typeof(ReservedNameController));
+
+        var analyzer = serviceProvider.GetRequiredService<ApiAnalyzer>();
+        var result = analyzer.Analyze().CompileTypeScriptApi(false, false, "./config", null);
+
+        Assert.Empty(result.ErrorMessages);
+        Assert.Contains("export const ReservedName = {", result.TypeScriptApi);
+        Assert.Contains("async delete(", result.TypeScriptApi);
+        Assert.DoesNotContain("$delete", result.TypeScriptApi);
+        Assert.DoesNotContain("export { $delete as delete };", result.TypeScriptApi);
+        Assert.DoesNotContain("/* delete */", result.TypeScriptApi);
     }
 
     [Fact]

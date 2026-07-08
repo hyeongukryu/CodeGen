@@ -18,7 +18,8 @@ import {
 import {
     _BuiltIns_POST_Echo_url,
 } from './_url-builders';
-export async function echo(request: BuiltInsDto, _axiosRequestConfig?: _AxiosRequestConfig): Promise<BuiltInsDto> {
+async function $echo(request: BuiltInsDto, _axiosRequestConfig?: _AxiosRequestConfig): Promise<BuiltInsDto> {
     const _response: any = await _createHttp().post(_BuiltIns_POST_Echo_url(), _convert_BuiltInsDto_TO__api_BuiltInsDto(request), _axiosRequestConfig);
     return _restoreCircularReferences(_convert__api_BuiltInsDto_TO_BuiltInsDto(_response.data), _createObject);
 }
+export { $echo as echo };

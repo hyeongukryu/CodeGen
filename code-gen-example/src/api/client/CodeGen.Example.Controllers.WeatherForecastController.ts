@@ -20,10 +20,12 @@ import {
 import {
     _WeatherForecast_GET_Get_url,
 } from './_url-builders';
-export async function get(count: number, temp: number, value: bigint, _axiosRequestConfig?: _AxiosRequestConfig): Promise<WeatherForecast[]> {
+async function $get(count: number, temp: number, value: bigint, _axiosRequestConfig?: _AxiosRequestConfig): Promise<WeatherForecast[]> {
     const _response: any = await _createHttp().get(_WeatherForecast_GET_Get_url(count, temp, value), _axiosRequestConfig);
     return _restoreCircularReferences(_convert__api_WeatherForecast_TO_WeatherForecast_Array(_response.data), _createObject);
 }
-export function useSWRGet(count: number, temp: number, value: bigint, _config: _SWRConfiguration = {}, _shouldFetch: boolean = true) {
+export { $get as get };
+function $useSWRGet(count: number, temp: number, value: bigint, _config: _SWRConfiguration = {}, _shouldFetch: boolean = true) {
     return _useSWR<WeatherForecast[]>(_shouldFetch ? _WeatherForecast_GET_Get_url(count, temp, value) : null, { ..._config, use: [_createSWRMiddleware(_convert__api_WeatherForecast_TO_WeatherForecast_Array)] });
 }
+export { $useSWRGet as useSWRGet };
