@@ -491,6 +491,10 @@ public class CodeGenGenerationContext(
 
         BeginFile("_util.ts");
         builder.AppendLine("import _codeGenConfig from '" + configFilePath + "';");
+        if (!split)
+        {
+            builder.AppendLine("import type { AxiosRequestConfig as _AxiosRequestConfig } from 'axios';");
+        }
         builder.AppendLine(GetResourceString("CodeGen.Generation.TypeScriptTemplates.util.ts"));
         builder.AppendLine(referenceHandlerConfiguration.PreserveReferences
             ? "export const _restoreCircularReferences = restoreCircularReferences;"
