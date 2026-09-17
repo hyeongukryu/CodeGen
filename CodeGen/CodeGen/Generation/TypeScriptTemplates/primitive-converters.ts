@@ -25,7 +25,12 @@ function _convert_boolean_TO_boolean(from: boolean): boolean {
 function _convert_Uint8Array_TO_string(from: Uint8Array): string {
     const globals = _getBase64Globals();
     if (globals.Buffer !== undefined) {
-        return globals.Buffer.from(from).toString('base64');
+        return globals.Buffer.from(from.buffer, from.byteOffset, from.byteLength).toString('base64');
+    }
+
+    const bytes = from as Uint8Array & { toBase64?: () => string };
+    if (typeof bytes.toBase64 === 'function') {
+        return bytes.toBase64();
     }
 
     if (globals.btoa !== undefined) {
@@ -39,6 +44,10 @@ function _convert_string_TO_Uint8Array(from: string): Uint8Array {
     const globals = _getBase64Globals();
     if (globals.Buffer !== undefined) {
         return new Uint8Array(globals.Buffer.from(from, 'base64'));
+    }
+
+    if (typeof globals.Uint8Array?.fromBase64 === 'function') {
+        return globals.Uint8Array.fromBase64(from);
     }
 
     if (globals.atob === undefined) {
@@ -56,16 +65,18 @@ function _convert_string_TO_Uint8Array(from: string): Uint8Array {
 function _getBase64Globals(): {
     atob?: (value: string) => string;
     btoa?: (value: string) => string;
+    Uint8Array?: { fromBase64?: (value: string) => Uint8Array };
     Buffer?: {
-        from(value: Uint8Array): { toString(encoding: string): string };
+        from(value: ArrayBufferLike, byteOffset: number, length: number): { toString(encoding: string): string };
         from(value: string, encoding: string): Uint8Array;
     };
 } {
     return globalThis as unknown as {
         atob?: (value: string) => string;
         btoa?: (value: string) => string;
+        Uint8Array?: { fromBase64?: (value: string) => Uint8Array };
         Buffer?: {
-            from(value: Uint8Array): { toString(encoding: string): string };
+            from(value: ArrayBufferLike, byteOffset: number, length: number): { toString(encoding: string): string };
             from(value: string, encoding: string): Uint8Array;
         };
     };
@@ -78,7 +89,7 @@ function _bytesToBinaryString(bytes: Uint8Array): string {
         let chunk = '';
         const end = Math.min(offset + chunkSize, bytes.length);
         for (let i = offset; i < end; i++) {
-            chunk += String.fromCharCode(bytes[i]);
+            chunk += String.fromCharCode(bytes[i]!);
         }
         binary += chunk;
     }

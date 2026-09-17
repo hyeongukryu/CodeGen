@@ -8,7 +8,7 @@ import _dayjs, { type Dayjs as _Dayjs } from 'dayjs';
 
 import _codeGenConfig from '../server.config';
 import _axios from 'axios';
-import type { AxiosRequestConfig as _AxiosRequestConfig, AxiosResponse as _AxiosResponse } from 'axios';
+import type { AxiosInstance as _AxiosInstance } from 'axios';
 
 export interface CodeGenConfig {
     createHttp?: CreateHttp;
@@ -18,14 +18,7 @@ export interface CodeGenConfig {
 type CreateHttp = () => CodeGenHttp;
 type CreateObject = (obj: any) => any;
 
-export interface CodeGenHttp {
-    get<T = any, R = _AxiosResponse<T>>(url: string, config?: _AxiosRequestConfig | undefined): Promise<R>;
-    delete<T = any, R = _AxiosResponse<T>>(url: string, config?: _AxiosRequestConfig | undefined): Promise<R>;
-    head<T = any, R = _AxiosResponse<T>>(url: string, config?: _AxiosRequestConfig | undefined): Promise<R>;
-    post<T = any, R = _AxiosResponse<T>>(url: string, data?: any, config?: _AxiosRequestConfig | undefined): Promise<R>;
-    put<T = any, R = _AxiosResponse<T>>(url: string, data?: any, config?: _AxiosRequestConfig | undefined): Promise<R>;
-    patch<T = any, R = _AxiosResponse<T>>(url: string, data?: any, config?: _AxiosRequestConfig | undefined): Promise<R>;
-}
+export type CodeGenHttp = Pick<_AxiosInstance, 'get' | 'delete' | 'head' | 'post' | 'put' | 'patch'>;
 
 export let _createHttp = _codeGenConfig.createHttp ?? (() => _axios.create());
 export let _createObject = _codeGenConfig.createObject ?? ((obj: any) => obj);

@@ -1,6 +1,7 @@
 import axios from 'axios';
+import type { CodeGenConfig } from './server';
 
-export default {
+const config: CodeGenConfig = {
     createHttp: () => {
         const http = axios.create({
             baseURL: 'http://localhost:5000',
@@ -37,3 +38,5 @@ export default {
         return http;
     },
 };
+
+export default config;

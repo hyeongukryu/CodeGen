@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "build": "rollup --config rollup.config.js"
+    "build": "tsc && rollup --config rollup.config.js"
   },
   "keywords": [],
   "author": "",
@@ -14,12 +14,10 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-terser": "^1.0.0",
-    "@rollup/plugin-typescript": "^12.3.0",
     "@types/node": "^25.9.4",
-    "rollup": "^4.62.2",
-    "tslib": "^2.8.1",
-    "typescript": "^6.0.3"
+    "rollup": "^4.63.3",
+    "typescript": "^7.0.2"
   },
   "type": "module",
-  "packageManager": "pnpm@11.10.0"
+  "packageManager": "pnpm@12.4.2"
 }
