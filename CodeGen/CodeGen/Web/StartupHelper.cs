@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using CodeGen.Analysis;
 using CodeGen.Generation;
 
@@ -27,16 +28,17 @@ public static class StartupHelper
         endpoints.MapGet("code-gen", async context =>
         {
             var assembly = typeof(StartupHelper).Assembly;
-            var resource = assembly.GetManifestResourceStream("CodeGen.Web.index.html");
+            await using var resource = assembly.GetManifestResourceStream("CodeGen.Web.index.html.gz");
             if (resource == null)
             {
                 context.Response.StatusCode = 500;
-                await context.Response.WriteAsync("Error: CodeGen.Web.index.html");
+                await context.Response.WriteAsync("Error: CodeGen.Web.index.html.gz");
                 return;
             }
 
             context.Response.ContentType = "text/html; charset=UTF-8";
-            await resource.CopyToAsync(context.Response.Body);
+            await using var gzip = new GZipStream(resource, CompressionMode.Decompress);
+            await gzip.CopyToAsync(context.Response.Body, context.RequestAborted);
         }).AllowAnonymous();
 
         endpoints.MapGet("code-gen-api", async context =>

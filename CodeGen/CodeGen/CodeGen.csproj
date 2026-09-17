@@ -10,11 +10,46 @@
     <ItemGroup>
       <None Remove="Web\index.html" />
       <EmbeddedResource Include="Generation\TypeScriptTemplates\*.ts" />
-      <EmbeddedResource Include="Web\index.html" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="NodaTime" Version="3.3.2" />
+      <PackageReference Include="NodaTime" Version="3.3.4" />
     </ItemGroup>
+
+    <UsingTask TaskName="CompressCodeGenWebAsset" TaskFactory="RoslynCodeTaskFactory"
+               AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+        <ParameterGroup>
+            <SourceFile ParameterType="System.String" Required="true" />
+            <DestinationFile ParameterType="System.String" Required="true" />
+        </ParameterGroup>
+        <Task>
+            <Using Namespace="System.IO" />
+            <Using Namespace="System.IO.Compression" />
+            <Code Type="Fragment" Language="cs"><![CDATA[
+                Directory.CreateDirectory(Path.GetDirectoryName(DestinationFile));
+                using (var source = File.OpenRead(SourceFile))
+                using (var destination = File.Create(DestinationFile))
+                using (var gzip = new GZipStream(destination, CompressionLevel.Optimal))
+                {
+                    source.CopyTo(gzip);
+                }
+            ]]></Code>
+        </Task>
+    </UsingTask>
+
+    <Target Name="CompressWebAsset"
+            Inputs="Web/index.html;$(MSBuildProjectFullPath)"
+            Outputs="$(IntermediateOutputPath)Web/index.html.gz">
+        <CompressCodeGenWebAsset SourceFile="Web/index.html"
+                                DestinationFile="$(IntermediateOutputPath)Web/index.html.gz" />
+    </Target>
+
+    <Target Name="EmbedCompressedWebAsset" BeforeTargets="AssignTargetPaths" DependsOnTargets="CompressWebAsset">
+        <ItemGroup>
+            <EmbeddedResource Include="$(IntermediateOutputPath)Web/index.html.gz"
+                              LogicalName="CodeGen.Web.index.html.gz" />
+            <FileWrites Include="$(IntermediateOutputPath)Web/index.html.gz" />
+        </ItemGroup>
+    </Target>
 
 </Project>
