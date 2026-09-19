@@ -6,7 +6,7 @@
 
 ## Build, Test, and Development Commands
 
-Run `dotnet build CodeGen/CodeGen.sln` to compile the .NET projects and `dotnet test CodeGen/CodeGen.sln` to run xUnit tests. Use `dotnet run --project CodeGen/CodeGen.Example` to exercise the example API locally. In `code-gen-cli/`, run `pnpm build` to create `out/bundle.js`; `./build.sh` also copies that bundle into `code-gen-web/src/bundle.js`. In `code-gen-web/`, run `pnpm dev` for local UI work, `pnpm build` for a production build, and `./build.sh` to copy `dist/index.html` into `CodeGen/CodeGen/Web/index.html`. If you change the TypeScript API result contract or UI/CLI consumption flow, rebuild both `code-gen-cli/` and `code-gen-web/`.
+Run `dotnet build CodeGen/CodeGen.slnx` to compile the .NET projects and `dotnet test CodeGen/CodeGen.slnx` to run xUnit tests. Use `dotnet run --project CodeGen/CodeGen.Example` to exercise the example API locally. In `code-gen-cli/`, run `pnpm build` to create `out/bundle.js`; `./build.sh` also copies that bundle into `code-gen-web/src/bundle.js`. In `code-gen-web/`, run `pnpm dev` for local UI work, `pnpm build` for a production build, and `./build.sh` to copy `dist/index.html` into `CodeGen/CodeGen/Web/index.html`. If you change the TypeScript API result contract or UI/CLI consumption flow, rebuild both `code-gen-cli/` and `code-gen-web/`.
 
 ## Coding Style & Naming Conventions
 

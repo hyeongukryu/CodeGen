@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="CodeGen.Example/CodeGen.Example.csproj" />
+  <Project Path="CodeGen.Tests/CodeGen.Tests.csproj" />
+  <Project Path="CodeGen/CodeGen.csproj" />
+</Solution>
