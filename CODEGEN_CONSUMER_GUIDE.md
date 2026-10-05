@@ -39,6 +39,25 @@ Most consumer apps wire scripts like this:
 - The CLI commonly passes `../client.config` and `../server.config` as `configFilePath`, but follow the consuming app’s existing script layout.
 - The generator expects the target directories to already exist.
 
+## Consumer Imports
+
+- Import generated types and controller namespaces from the SDK's public entry point (`index.ts`), such as `../api/client` or `../api/server`.
+- Do not import from internal generated files such as `_types.ts`, `_converters.ts`, `_util.ts`, `_url-builders.ts`, or individual `*.Controller.ts` files. This rule applies to consumer code; leave the generator's own internal imports unchanged.
+- Use `import type` for type-only imports and use the controller namespaces re-exported by the public entry point for API calls and SWR hooks.
+- Call generated SWR hooks directly at their usage sites, for example `Items.useSWRGetItems()`. Do not add application-level re-exports or aliases such as `useItems` merely to rename a generated hook.
+
+```tsx
+import { Items, type ItemSummary } from '../api/client';
+
+function ItemList() {
+  const { data } = Items.useSWRGetItems();
+  const items: ItemSummary[] = data ?? [];
+  return <ul>{items.map(item => <li key={item.id}>{item.label}</li>)}</ul>;
+}
+```
+
+Use the actual namespace and type names exported by the generated entry point. When reviewing consumer imports, check existing call sites as well as newly added code.
+
 ## Starting the Server for Generation
 
 The SDK generator talks to a live app, so "the server builds" is not enough. The app must start in the same environment and network context that the SDK update command can reach.
